@@ -20,7 +20,6 @@ const SAMPLE_DATA = {
     ["2026-03-12", "서비스", "교육", "560000", "6"],
   ],
   source: "sample",
-  updatedAt: null,
 };
 
 let dataset = null;
@@ -29,17 +28,11 @@ let manualRows = [];
 let pendingUpload = null;
 let currentReport = null;
 let computedStats = null;
+let erpPanel = null;
 
-const statusEl = document.getElementById("erp-status");
-const datasetNameInput = document.getElementById("erp-dataset-name");
-const manualThead = document.getElementById("erp-manual-thead");
-const manualTbody = document.getElementById("erp-manual-tbody");
-const columnEditor = document.getElementById("erp-column-editor");
-const uploadPreview = document.getElementById("erp-upload-preview");
-const fileNameEl = document.getElementById("erp-file-name");
-const applyUploadBtn = document.getElementById("erp-apply-upload");
-const rawFilterInput = document.getElementById("erp-raw-filter");
-const reportContent = document.getElementById("erp-report-content");
+function $(id) {
+  return document.getElementById(id);
+}
 
 function escapeHtml(text) {
   const div = document.createElement("div");
@@ -48,13 +41,14 @@ function escapeHtml(text) {
 }
 
 function setStatus(message, type = "") {
+  const statusEl = $("erp-status");
+  if (!statusEl) return;
   statusEl.textContent = message;
   statusEl.className = `status ${type}`.trim();
 }
 
 function clearStatus() {
-  statusEl.textContent = "";
-  statusEl.className = "status";
+  setStatus("");
 }
 
 function formatNumber(n) {
@@ -100,24 +94,26 @@ function parseCSV(text) {
   return rows;
 }
 
+function parseNumber(value) {
+  const cleaned = String(value).replace(/[,\s₩원%]/g, "");
+  const num = Number(cleaned);
+  return Number.isFinite(num) ? num : NaN;
+}
+
 function detectColumnType(values) {
   const nonEmpty = values.filter((v) => v !== "" && v != null);
   if (!nonEmpty.length) return "text";
 
   const datePattern = /^\d{4}[-./]\d{1,2}[-./]\d{1,2}/;
-  const dateHits = nonEmpty.filter((v) => datePattern.test(String(v))).length;
-  if (dateHits / nonEmpty.length >= 0.7) return "date";
+  if (nonEmpty.filter((v) => datePattern.test(String(v))).length / nonEmpty.length >= 0.7) {
+    return "date";
+  }
 
-  const numHits = nonEmpty.filter((v) => !Number.isNaN(parseNumber(v))).length;
-  if (numHits / nonEmpty.length >= 0.7) return "number";
+  if (nonEmpty.filter((v) => !Number.isNaN(parseNumber(v))).length / nonEmpty.length >= 0.7) {
+    return "number";
+  }
 
   return "text";
-}
-
-function parseNumber(value) {
-  const cleaned = String(value).replace(/[,\s₩원%]/g, "");
-  const num = Number(cleaned);
-  return Number.isFinite(num) ? num : NaN;
 }
 
 function computeStats(headers, rows) {
@@ -148,11 +144,7 @@ function computeStats(headers, rows) {
     return col;
   });
 
-  return {
-    rowCount: rows.length,
-    columnCount: headers.length,
-    columns,
-  };
+  return { rowCount: rows.length, columnCount: headers.length, columns };
 }
 
 function saveDataset() {
@@ -175,28 +167,33 @@ function loadDataset() {
   }
 }
 
-function applyDataset(name, headers, rows, source = "manual") {
-  dataset = {
-    name: name || "ERP 데이터",
-    headers: headers.map((h) => String(h).trim() || "열"),
-    rows: rows.map((row) => headers.map((_, i) => String(row[i] ?? "").trim())),
-    source,
-    updatedAt: new Date().toISOString(),
-  };
+function syncManualFromInputs() {
+  const columnEditor = $("erp-column-editor");
+  const manualTbody = $("erp-manual-tbody");
+  if (!columnEditor || !manualTbody) return;
 
-  manualHeaders = [...dataset.headers];
-  manualRows = dataset.rows.map((row) => [...row]);
-  datasetNameInput.value = dataset.name;
-  computedStats = computeStats(dataset.headers, dataset.rows);
-  currentReport = null;
+  columnEditor.querySelectorAll(".erp-header-input").forEach((input) => {
+    const i = Number(input.dataset.colIndex);
+    if (!Number.isNaN(i)) {
+      manualHeaders[i] = input.value.trim() || `열${i + 1}`;
+    }
+  });
 
-  saveDataset();
-  renderAllViews();
-  setStatus(`데이터 ${dataset.rows.length}행이 적용되었습니다.`, "success");
-  setTimeout(clearStatus, 2500);
+  manualRows = [];
+  const rowEls = manualTbody.querySelectorAll("tr");
+  rowEls.forEach((tr, r) => {
+    const row = manualHeaders.map((_, c) => {
+      const cell = tr.querySelector(`.erp-cell-input[data-col="${c}"]`);
+      return cell ? cell.value.trim() : "";
+    });
+    manualRows.push(row);
+  });
 }
 
 function renderColumnEditor() {
+  const columnEditor = $("erp-column-editor");
+  if (!columnEditor) return;
+
   columnEditor.innerHTML = manualHeaders
     .map(
       (header, i) => `
@@ -210,6 +207,10 @@ function renderColumnEditor() {
 }
 
 function renderManualTable() {
+  const manualThead = $("erp-manual-thead");
+  const manualTbody = $("erp-manual-tbody");
+  if (!manualThead || !manualTbody) return;
+
   manualThead.innerHTML = `<tr>${manualHeaders.map((h) => `<th>${escapeHtml(h)}</th>`).join("")}<th class="erp-action-col"></th></tr>`;
 
   if (!manualRows.length) {
@@ -236,7 +237,72 @@ function renderManualTable() {
     .join("");
 }
 
+function renderManualEditor() {
+  renderColumnEditor();
+  renderManualTable();
+}
+
+function addColumn() {
+  syncManualFromInputs();
+  manualHeaders.push(`열${manualHeaders.length + 1}`);
+  manualRows = manualRows.map((row) => [...row, ""]);
+  renderManualEditor();
+  setStatus(`열이 추가되었습니다. (총 ${manualHeaders.length}열)`, "success");
+  setTimeout(clearStatus, 1500);
+}
+
+function addRow() {
+  syncManualFromInputs();
+  manualRows.push(manualHeaders.map(() => ""));
+  renderManualTable();
+  setStatus(`행이 추가되었습니다. (총 ${manualRows.length}행)`, "success");
+  setTimeout(clearStatus, 1500);
+}
+
+function removeColumn(index) {
+  if (manualHeaders.length <= 1) return;
+  syncManualFromInputs();
+  manualHeaders.splice(index, 1);
+  manualRows = manualRows.map((row) => row.filter((_, i) => i !== index));
+  renderManualEditor();
+}
+
+function removeRow(index) {
+  syncManualFromInputs();
+  manualRows.splice(index, 1);
+  if (!manualRows.length) manualRows.push(manualHeaders.map(() => ""));
+  renderManualTable();
+}
+
+function applyDataset(name, headers, rows, source = "manual") {
+  dataset = {
+    name: name || "ERP 데이터",
+    headers: headers.map((h) => String(h).trim() || "열"),
+    rows: rows.map((row) => headers.map((_, i) => String(row[i] ?? "").trim())),
+    source,
+    updatedAt: new Date().toISOString(),
+  };
+
+  manualHeaders = [...dataset.headers];
+  manualRows = dataset.rows.map((row) => [...row]);
+  const nameInput = $("erp-dataset-name");
+  if (nameInput) nameInput.value = dataset.name;
+
+  computedStats = computeStats(dataset.headers, dataset.rows);
+  currentReport = null;
+
+  saveDataset();
+  renderManualEditor();
+  renderAllViews();
+  setStatus(`데이터 ${dataset.rows.length}행이 적용되었습니다.`, "success");
+  setTimeout(clearStatus, 2500);
+}
+
 function renderUploadPreview(headers, rows) {
+  const uploadPreview = $("erp-upload-preview");
+  const applyUploadBtn = $("erp-apply-upload");
+  if (!uploadPreview || !applyUploadBtn) return;
+
   const previewRows = rows.slice(0, 8);
   uploadPreview.innerHTML = `
     <table class="erp-table">
@@ -257,10 +323,11 @@ function renderUploadPreview(headers, rows) {
 }
 
 function renderDashboard() {
-  const emptyEl = document.getElementById("erp-dashboard-empty");
-  const contentEl = document.getElementById("erp-dashboard-content");
-  const kpiGrid = document.getElementById("erp-kpi-grid");
-  const chartsEl = document.getElementById("erp-charts");
+  const emptyEl = $("erp-dashboard-empty");
+  const contentEl = $("erp-dashboard-content");
+  const kpiGrid = $("erp-kpi-grid");
+  const chartsEl = $("erp-charts");
+  if (!emptyEl || !contentEl || !kpiGrid || !chartsEl) return;
 
   if (!dataset?.rows?.length) {
     emptyEl.classList.remove("hidden");
@@ -346,11 +413,13 @@ function renderDashboard() {
 }
 
 function renderRawData() {
-  const emptyEl = document.getElementById("erp-raw-empty");
-  const contentEl = document.getElementById("erp-raw-content");
-  const thead = document.getElementById("erp-raw-thead");
-  const tbody = document.getElementById("erp-raw-tbody");
-  const countEl = document.getElementById("erp-raw-count");
+  const emptyEl = $("erp-raw-empty");
+  const contentEl = $("erp-raw-content");
+  const thead = $("erp-raw-thead");
+  const tbody = $("erp-raw-tbody");
+  const countEl = $("erp-raw-count");
+  const filterInput = $("erp-raw-filter");
+  if (!emptyEl || !contentEl || !thead || !tbody || !countEl) return;
 
   if (!dataset?.rows?.length) {
     emptyEl.classList.remove("hidden");
@@ -361,7 +430,7 @@ function renderRawData() {
   emptyEl.classList.add("hidden");
   contentEl.classList.remove("hidden");
 
-  const filter = rawFilterInput.value.trim().toLowerCase();
+  const filter = (filterInput?.value || "").trim().toLowerCase();
   const filtered = filter
     ? dataset.rows.filter((row) => row.some((cell) => String(cell).toLowerCase().includes(filter)))
     : dataset.rows;
@@ -379,10 +448,43 @@ function renderRawData() {
     : `총 ${dataset.rows.length}행`;
 }
 
+function renderReport(report) {
+  const reportContent = $("erp-report-content");
+  if (!reportContent) return;
+
+  const sectionsHtml = (report.sections || [])
+    .map(
+      (s) => `
+    <div class="report-section-block">
+      <h3>${escapeHtml(s.heading)}</h3>
+      <p>${escapeHtml(s.content)}</p>
+    </div>
+  `
+    )
+    .join("");
+
+  const takeawaysHtml = (report.keyTakeaways || []).map((t) => `<li>${escapeHtml(t)}</li>`).join("");
+  const recsHtml = (report.recommendations || []).map((r) => `<li>${escapeHtml(r)}</li>`).join("");
+
+  reportContent.innerHTML = `
+    <h2>${escapeHtml(report.title)}</h2>
+    <p class="report-meta">데이터셋: ${escapeHtml(report.datasetName || dataset?.name || "-")} · 분석일: ${escapeHtml(report.analyzedAt || "-")}</p>
+    <p class="report-executive">${escapeHtml(report.executiveSummary)}</p>
+    ${sectionsHtml}
+    <div class="report-takeaways">
+      <h3>핵심 인사이트</h3>
+      <ul>${takeawaysHtml}</ul>
+    </div>
+    ${recsHtml ? `<div class="report-takeaways"><h3>실행 제안</h3><ul>${recsHtml}</ul></div>` : ""}
+  `;
+}
+
 function renderReportPanel() {
-  const emptyEl = document.getElementById("erp-report-empty");
-  const controlsEl = document.getElementById("erp-report-controls");
-  const actionsEl = document.getElementById("erp-report-actions");
+  const emptyEl = $("erp-report-empty");
+  const controlsEl = $("erp-report-controls");
+  const actionsEl = $("erp-report-actions");
+  const reportContent = $("erp-report-content");
+  if (!emptyEl || !controlsEl || !actionsEl || !reportContent) return;
 
   if (!dataset?.rows?.length) {
     emptyEl.classList.remove("hidden");
@@ -406,43 +508,6 @@ function renderReportPanel() {
   }
 }
 
-function renderReport(report) {
-  const sectionsHtml = (report.sections || [])
-    .map(
-      (s) => `
-    <div class="report-section-block">
-      <h3>${escapeHtml(s.heading)}</h3>
-      <p>${escapeHtml(s.content)}</p>
-    </div>
-  `
-    )
-    .join("");
-
-  const takeawaysHtml = (report.keyTakeaways || [])
-    .map((t) => `<li>${escapeHtml(t)}</li>`)
-    .join("");
-
-  const recsHtml = (report.recommendations || [])
-    .map((r) => `<li>${escapeHtml(r)}</li>`)
-    .join("");
-
-  reportContent.innerHTML = `
-    <h2>${escapeHtml(report.title)}</h2>
-    <p class="report-meta">데이터셋: ${escapeHtml(report.datasetName || dataset.name)} · 분석일: ${escapeHtml(report.analyzedAt || "-")}</p>
-    <p class="report-executive">${escapeHtml(report.executiveSummary)}</p>
-    ${sectionsHtml}
-    <div class="report-takeaways">
-      <h3>핵심 인사이트</h3>
-      <ul>${takeawaysHtml}</ul>
-    </div>
-    ${
-      recsHtml
-        ? `<div class="report-takeaways"><h3>실행 제안</h3><ul>${recsHtml}</ul></div>`
-        : ""
-    }
-  `;
-}
-
 function renderAllViews() {
   renderDashboard();
   renderRawData();
@@ -450,45 +515,29 @@ function renderAllViews() {
 }
 
 function switchErpTab(tabName) {
-  document.querySelectorAll(".erp-subtab").forEach((tab) => {
+  document.querySelectorAll("#panel-erp .erp-subtab").forEach((tab) => {
     tab.classList.toggle("active", tab.dataset.erpTab === tabName);
   });
 
-  document.querySelectorAll(".erp-tab-panel").forEach((panel) => {
+  document.querySelectorAll("#panel-erp .erp-tab-panel").forEach((panel) => {
     panel.classList.add("hidden");
   });
 
-  const panel = document.getElementById(`erp-tab-${tabName}`);
+  const panel = $(`erp-tab-${tabName}`);
   if (panel) panel.classList.remove("hidden");
 
+  if (tabName === "input") renderManualEditor();
   if (tabName === "dashboard") renderDashboard();
   if (tabName === "raw") renderRawData();
   if (tabName === "report") renderReportPanel();
 }
 
 function switchInputMode(mode) {
-  document.querySelectorAll(".erp-mode-btn").forEach((btn) => {
+  document.querySelectorAll("#panel-erp .erp-mode-btn").forEach((btn) => {
     btn.classList.toggle("active", btn.dataset.inputMode === mode);
   });
-  document.getElementById("erp-manual-panel").classList.toggle("hidden", mode !== "manual");
-  document.getElementById("erp-upload-panel").classList.toggle("hidden", mode !== "upload");
-}
-
-function syncManualFromInputs() {
-  document.querySelectorAll(".erp-header-input").forEach((input) => {
-    const i = Number(input.dataset.colIndex);
-    manualHeaders[i] = input.value.trim() || `열${i + 1}`;
-  });
-
-  manualRows = [];
-  const rowCount = manualTbody.querySelectorAll("tr").length;
-  for (let r = 0; r < rowCount; r++) {
-    const row = manualHeaders.map((_, c) => {
-      const cell = manualTbody.querySelector(`.erp-cell-input[data-row="${r}"][data-col="${c}"]`);
-      return cell ? cell.value.trim() : "";
-    });
-    manualRows.push(row);
-  }
+  $("erp-manual-panel")?.classList.toggle("hidden", mode !== "manual");
+  $("erp-upload-panel")?.classList.toggle("hidden", mode !== "upload");
 }
 
 function exportCSV() {
@@ -550,7 +599,11 @@ async function generateReport() {
     return;
   }
 
-  const btn = document.getElementById("erp-generate-report");
+  const btn = $("erp-generate-report");
+  const reportContent = $("erp-report-content");
+  const actionsEl = $("erp-report-actions");
+  if (!btn || !reportContent) return;
+
   btn.disabled = true;
   setStatus("AI가 ERP 데이터를 분석하는 중...", "loading");
   reportContent.classList.remove("hidden");
@@ -567,12 +620,12 @@ async function generateReport() {
       datasetName: dataset.name,
       stats,
       sampleRows: dataset.rows,
-      focus: document.getElementById("erp-focus-input").value.trim(),
+      focus: ($("erp-focus-input")?.value || "").trim(),
     });
 
     currentReport = data;
     renderReport(data);
-    document.getElementById("erp-report-actions").classList.remove("hidden");
+    actionsEl?.classList.remove("hidden");
     clearStatus();
   } catch (err) {
     reportContent.classList.add("hidden");
@@ -584,6 +637,9 @@ async function generateReport() {
 
 function downloadReportHtml() {
   if (!currentReport) return;
+  const reportContent = $("erp-report-content");
+  if (!reportContent) return;
+
   const html = `<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><title>${escapeHtml(currentReport.title)}</title></head><body>${reportContent.innerHTML}</body></html>`;
   const blob = new Blob([html], { type: "text/html;charset=utf-8" });
   const url = URL.createObjectURL(blob);
@@ -594,147 +650,200 @@ function downloadReportHtml() {
   URL.revokeObjectURL(url);
 }
 
-function initManualEditor() {
-  if (dataset) {
-    manualHeaders = [...dataset.headers];
-    manualRows = dataset.rows.map((r) => [...r]);
-  } else {
-    manualHeaders = [...DEFAULT_HEADERS];
-    manualRows = [manualHeaders.map(() => "")];
-  }
-  renderColumnEditor();
-  renderManualTable();
-}
+function handlePanelClick(e) {
+  const target = e.target;
 
-document.querySelectorAll(".erp-subtab").forEach((tab) => {
-  tab.addEventListener("click", () => switchErpTab(tab.dataset.erpTab));
-});
-
-document.querySelectorAll(".erp-mode-btn").forEach((btn) => {
-  btn.addEventListener("click", () => switchInputMode(btn.dataset.inputMode));
-});
-
-document.querySelectorAll("[data-goto-tab]").forEach((btn) => {
-  btn.addEventListener("click", () => switchErpTab(btn.dataset.gotoTab));
-});
-
-document.getElementById("erp-add-column").addEventListener("click", () => {
-  syncManualFromInputs();
-  manualHeaders.push(`열${manualHeaders.length + 1}`);
-  manualRows = manualRows.map((row) => [...row, ""]);
-  renderColumnEditor();
-  renderManualTable();
-});
-
-document.getElementById("erp-add-row").addEventListener("click", () => {
-  syncManualFromInputs();
-  manualRows.push(manualHeaders.map(() => ""));
-  renderManualTable();
-});
-
-columnEditor.addEventListener("click", (e) => {
-  const btn = e.target.closest(".erp-remove-col");
-  if (!btn || manualHeaders.length <= 1) return;
-  syncManualFromInputs();
-  const index = Number(btn.dataset.colIndex);
-  manualHeaders.splice(index, 1);
-  manualRows = manualRows.map((row) => row.filter((_, i) => i !== index));
-  renderColumnEditor();
-  renderManualTable();
-});
-
-manualTbody.addEventListener("click", (e) => {
-  const btn = e.target.closest(".erp-remove-row");
-  if (!btn) return;
-  syncManualFromInputs();
-  manualRows.splice(Number(btn.dataset.row), 1);
-  if (!manualRows.length) manualRows.push(manualHeaders.map(() => ""));
-  renderManualTable();
-});
-
-document.getElementById("erp-apply-manual").addEventListener("click", () => {
-  syncManualFromInputs();
-  const nonEmptyRows = manualRows.filter((row) => row.some((cell) => cell !== ""));
-  if (!nonEmptyRows.length) {
-    setStatus("최소 1행 이상의 데이터를 입력해 주세요.", "error");
+  if (target.closest("#erp-add-column")) {
+    e.preventDefault();
+    addColumn();
     return;
   }
-  applyDataset(datasetNameInput.value.trim() || "ERP 데이터", manualHeaders, nonEmptyRows, "manual");
-});
 
-document.getElementById("erp-file-trigger").addEventListener("click", () => {
-  document.getElementById("erp-file-input").click();
-});
+  if (target.closest("#erp-add-row")) {
+    e.preventDefault();
+    addRow();
+    return;
+  }
 
-document.getElementById("erp-file-input").addEventListener("change", (e) => {
+  if (target.closest("#erp-apply-manual")) {
+    e.preventDefault();
+    syncManualFromInputs();
+    const nonEmptyRows = manualRows.filter((row) => row.some((cell) => cell !== ""));
+    if (!nonEmptyRows.length) {
+      setStatus("최소 1행 이상의 데이터를 입력해 주세요.", "error");
+      return;
+    }
+    const name = ($("erp-dataset-name")?.value || "").trim() || "ERP 데이터";
+    applyDataset(name, manualHeaders, nonEmptyRows, "manual");
+    return;
+  }
+
+  const removeColBtn = target.closest(".erp-remove-col");
+  if (removeColBtn) {
+    e.preventDefault();
+    removeColumn(Number(removeColBtn.dataset.colIndex));
+    return;
+  }
+
+  const removeRowBtn = target.closest(".erp-remove-row");
+  if (removeRowBtn) {
+    e.preventDefault();
+    removeRow(Number(removeRowBtn.dataset.row));
+    return;
+  }
+
+  const subtab = target.closest(".erp-subtab");
+  if (subtab?.dataset.erpTab) {
+    switchErpTab(subtab.dataset.erpTab);
+    return;
+  }
+
+  const modeBtn = target.closest(".erp-mode-btn");
+  if (modeBtn?.dataset.inputMode) {
+    switchInputMode(modeBtn.dataset.inputMode);
+    return;
+  }
+
+  const gotoBtn = target.closest("[data-goto-tab]");
+  if (gotoBtn?.dataset.gotoTab) {
+    switchErpTab(gotoBtn.dataset.gotoTab);
+    return;
+  }
+
+  if (target.closest("#erp-file-trigger")) {
+    e.preventDefault();
+    $("erp-file-input")?.click();
+    return;
+  }
+
+  if (target.closest("#erp-apply-upload")) {
+    e.preventDefault();
+    if (!pendingUpload) return;
+    const name = ($("erp-dataset-name")?.value || "").trim() || pendingUpload.headers.join("_");
+    applyDataset(name, pendingUpload.headers, pendingUpload.rows, "upload");
+    pendingUpload = null;
+    return;
+  }
+
+  if (target.closest("#erp-sample-btn")) {
+    e.preventDefault();
+    applyDataset(SAMPLE_DATA.name, SAMPLE_DATA.headers, SAMPLE_DATA.rows, "sample");
+    return;
+  }
+
+  if (target.closest("#erp-clear-btn")) {
+    e.preventDefault();
+    if (!dataset && !manualRows.some((r) => r.some(Boolean))) return;
+    if (!confirm("등록된 ERP 데이터를 모두 삭제할까요?")) return;
+    dataset = null;
+    computedStats = null;
+    currentReport = null;
+    pendingUpload = null;
+    manualHeaders = [...DEFAULT_HEADERS];
+    manualRows = [manualHeaders.map(() => "")];
+    const nameInput = $("erp-dataset-name");
+    if (nameInput) nameInput.value = "";
+    localStorage.removeItem(STORAGE_KEY);
+    renderManualEditor();
+    renderAllViews();
+    $("erp-upload-preview")?.classList.add("hidden");
+    $("erp-apply-upload")?.classList.add("hidden");
+    const fileNameEl = $("erp-file-name");
+    if (fileNameEl) fileNameEl.textContent = "선택된 파일 없음";
+    clearStatus();
+    return;
+  }
+
+  if (target.closest("#erp-export-csv")) {
+    e.preventDefault();
+    exportCSV();
+    return;
+  }
+
+  if (target.closest("#erp-generate-report")) {
+    e.preventDefault();
+    generateReport();
+    return;
+  }
+
+  if (target.closest("#erp-download-report")) {
+    e.preventDefault();
+    downloadReportHtml();
+  }
+}
+
+function handleFileChange(e) {
   const file = e.target.files?.[0];
   if (!file) return;
 
-  fileNameEl.textContent = file.name;
+  const fileNameEl = $("erp-file-name");
+  if (fileNameEl) fileNameEl.textContent = file.name;
+
   const reader = new FileReader();
   reader.onload = () => {
     const parsed = parseCSV(String(reader.result || ""));
     if (parsed.length < 2) {
       setStatus("CSV에 헤더와 데이터 행이 필요합니다.", "error");
       pendingUpload = null;
-      uploadPreview.classList.add("hidden");
-      applyUploadBtn.classList.add("hidden");
+      $("erp-upload-preview")?.classList.add("hidden");
+      $("erp-apply-upload")?.classList.add("hidden");
       return;
     }
-    const headers = parsed[0];
-    const rows = parsed.slice(1);
-    pendingUpload = { headers, rows };
-    renderUploadPreview(headers, rows);
+    pendingUpload = { headers: parsed[0], rows: parsed.slice(1) };
+    renderUploadPreview(pendingUpload.headers, pendingUpload.rows);
     clearStatus();
   };
   reader.readAsText(file, "UTF-8");
-});
+}
 
-document.getElementById("erp-apply-upload").addEventListener("click", () => {
-  if (!pendingUpload) return;
-  applyDataset(
-    datasetNameInput.value.trim() || pendingUpload.headers.join("_"),
-    pendingUpload.headers,
-    pendingUpload.rows,
-    "upload"
-  );
-  pendingUpload = null;
-});
+function initManualEditor() {
+  if (dataset) {
+    manualHeaders = [...dataset.headers];
+    manualRows = dataset.rows.map((r) => [...r]);
+  } else if (!manualRows.length) {
+    manualHeaders = [...DEFAULT_HEADERS];
+    manualRows = [manualHeaders.map(() => "")];
+  }
+  renderManualEditor();
+}
 
-document.getElementById("erp-sample-btn").addEventListener("click", () => {
-  applyDataset(SAMPLE_DATA.name, SAMPLE_DATA.headers, SAMPLE_DATA.rows, "sample");
-  initManualEditor();
-});
+function bootErp() {
+  erpPanel = $("panel-erp");
+  if (!erpPanel) {
+    console.error("ERP: panel-erp not found");
+    return;
+  }
 
-document.getElementById("erp-clear-btn").addEventListener("click", () => {
-  if (!dataset && !manualRows.some((r) => r.some(Boolean))) return;
-  if (!confirm("등록된 ERP 데이터를 모두 삭제할까요?")) return;
-  dataset = null;
-  computedStats = null;
-  currentReport = null;
-  pendingUpload = null;
-  manualHeaders = [...DEFAULT_HEADERS];
-  manualRows = [manualHeaders.map(() => "")];
-  datasetNameInput.value = "";
-  localStorage.removeItem(STORAGE_KEY);
+  if (!$("erp-column-editor") || !$("erp-manual-tbody")) {
+    setStatus("ERP 입력 UI를 불러오지 못했습니다. 페이지를 새로고침해 주세요.", "error");
+    return;
+  }
+
+  erpPanel.addEventListener("click", handlePanelClick);
+  $("erp-file-input")?.addEventListener("change", handleFileChange);
+  $("erp-raw-filter")?.addEventListener("input", renderRawData);
+
+  const saved = loadDataset();
+  if (saved) {
+    dataset = saved;
+    computedStats = computeStats(saved.headers, saved.rows);
+    const nameInput = $("erp-dataset-name");
+    if (nameInput) nameInput.value = saved.name || "";
+  }
+
   initManualEditor();
   renderAllViews();
-  uploadPreview.classList.add("hidden");
-  applyUploadBtn.classList.add("hidden");
-  fileNameEl.textContent = "선택된 파일 없음";
-  clearStatus();
-});
 
-rawFilterInput.addEventListener("input", renderRawData);
-document.getElementById("erp-export-csv").addEventListener("click", exportCSV);
-document.getElementById("erp-generate-report").addEventListener("click", generateReport);
-document.getElementById("erp-download-report").addEventListener("click", downloadReportHtml);
-
-const saved = loadDataset();
-if (saved) {
-  dataset = saved;
-  computedStats = computeStats(saved.headers, saved.rows);
-  datasetNameInput.value = saved.name || "";
+  window.ErpModule = {
+    refresh: () => {
+      renderManualEditor();
+      renderAllViews();
+    },
+  };
 }
-initManualEditor();
-renderAllViews();
+
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", bootErp);
+} else {
+  bootErp();
+}

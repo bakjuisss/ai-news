@@ -421,18 +421,18 @@ async function handleSendEmail(e) {
   }
 }
 
-searchForm.addEventListener("submit", (e) => {
+searchForm?.addEventListener("submit", (e) => {
   e.preventDefault();
   handleSearch(searchInput.value);
 });
 
-reportBtn.addEventListener("click", handleReport);
-emailCheckBtn.addEventListener("click", handleEmailCheck);
-emailForm.addEventListener("submit", handleSendEmail);
-downloadReportBtn.addEventListener("click", downloadReportFile);
+reportBtn?.addEventListener("click", handleReport);
+emailCheckBtn?.addEventListener("click", handleEmailCheck);
+emailForm?.addEventListener("submit", handleSendEmail);
+downloadReportBtn?.addEventListener("click", downloadReportFile);
 
-emailInput.addEventListener("input", resetEmailForm);
-smtpPasswordInput.addEventListener("input", () => {
+emailInput?.addEventListener("input", resetEmailForm);
+smtpPasswordInput?.addEventListener("input", () => {
   if (emailConfirmed) resetEmailForm();
 });
 

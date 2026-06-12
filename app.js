@@ -36,6 +36,10 @@ function switchPanel(name) {
   document.getElementById("footer-text").textContent = meta.footer;
 
   window.scrollTo({ top: 0, behavior: "smooth" });
+
+  if (name === "erp" && window.ErpModule?.refresh) {
+    window.ErpModule.refresh();
+  }
 }
 
 document.querySelectorAll(".nav-tab").forEach((tab) => {
