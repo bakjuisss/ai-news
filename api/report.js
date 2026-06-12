@@ -54,7 +54,8 @@ module.exports = async function handler(req, res) {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
     return res.status(500).json({
-      error: "GEMINI_API_KEY 환경변수가 설정되지 않았습니다. Vercel Settings → Environment Variables에서 추가해 주세요.",
+      error:
+        "GEMINI_API_KEY 환경변수가 설정되지 않았습니다. Vercel Settings → Environment Variables에서 추가한 뒤, 반드시 Redeploy(재배포)를 실행해 주세요. 환경변수 추가만으로는 기존 배포에 반영되지 않습니다.",
     });
   }
 
