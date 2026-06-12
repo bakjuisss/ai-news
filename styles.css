@@ -153,6 +153,11 @@ body {
   color: var(--error);
 }
 
+.status.success {
+  background: #ecfdf5;
+  color: #047857;
+}
+
 .welcome {
   text-align: center;
   padding: 3rem 1rem;
@@ -353,6 +358,64 @@ body {
   font-size: 0.925rem;
 }
 
+.email-form {
+  margin-top: 1rem;
+  padding: 1.25rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+
+.email-form label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.email-form-row {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.email-form input {
+  flex: 1;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-size: 0.95rem;
+  font-family: inherit;
+}
+
+.email-form input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.email-form button {
+  padding: 0.75rem 1.25rem;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius);
+  font-family: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.email-form button:hover:not(:disabled) {
+  background: var(--accent-hover);
+}
+
+.email-form button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .skeleton {
   background: linear-gradient(90deg, #eee 25%, #f5f5f5 50%, #eee 75%);
   background-size: 200% 100%;
@@ -465,6 +528,14 @@ body {
   }
 
   .report-btn {
+    width: 100%;
+  }
+
+  .email-form-row {
+    flex-direction: column;
+  }
+
+  .email-form button {
     width: 100%;
   }
 }

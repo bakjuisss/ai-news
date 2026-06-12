@@ -55,6 +55,20 @@
 
       <section id="report-section" class="report-section hidden">
         <div id="report-content" class="report-content"></div>
+        <form id="email-form" class="email-form hidden">
+          <label for="email-input">보고서를 받을 이메일</label>
+          <div class="email-form-row">
+            <input
+              id="email-input"
+              type="email"
+              placeholder="example@email.com"
+              autocomplete="email"
+              maxlength="254"
+              required
+            >
+            <button type="submit" id="email-btn">이메일로 보내기</button>
+          </div>
+        </form>
       </section>
 
       <aside id="sources-section" class="sources-section hidden">

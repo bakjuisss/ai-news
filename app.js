@@ -9,6 +9,9 @@ const resultsTitle = document.getElementById("results-title");
 const articlesEl = document.getElementById("articles");
 const reportSection = document.getElementById("report-section");
 const reportContent = document.getElementById("report-content");
+const emailForm = document.getElementById("email-form");
+const emailInput = document.getElementById("email-input");
+const emailBtn = document.getElementById("email-btn");
 const sourcesSection = document.getElementById("sources-section");
 const sourcesList = document.getElementById("sources-list");
 const searchEntryPoint = document.getElementById("search-entry-point");
@@ -16,6 +19,7 @@ const searchEntryPoint = document.getElementById("search-entry-point");
 let currentQuery = "";
 let currentArticles = [];
 let currentSources = [];
+let currentReport = null;
 
 function setStatus(message, type = "") {
   statusEl.textContent = message;
@@ -94,6 +98,7 @@ function renderArticles(articles) {
 
 function renderReportSkeleton() {
   reportSection.classList.remove("hidden");
+  emailForm.classList.add("hidden");
   reportContent.innerHTML = `
     <div class="skeleton title"></div>
     <div class="skeleton summary"></div>
@@ -104,7 +109,9 @@ function renderReportSkeleton() {
 }
 
 function renderReport(report) {
+  currentReport = report;
   reportSection.classList.remove("hidden");
+  emailForm.classList.remove("hidden");
 
   const sectionsHtml = (report.sections || [])
     .map(
@@ -199,6 +206,8 @@ async function handleSearch(query) {
   resultsSection.classList.remove("hidden");
   reportSection.classList.add("hidden");
   reportContent.innerHTML = "";
+  emailForm.classList.add("hidden");
+  currentReport = null;
 
   resultsTitle.textContent = `"${trimmed}" 검색 결과`;
   searchBtn.disabled = true;
@@ -256,10 +265,43 @@ async function handleReport() {
     reportSection.scrollIntoView({ behavior: "smooth", block: "start" });
   } catch (err) {
     reportSection.classList.add("hidden");
+    emailForm.classList.add("hidden");
     setStatus(err.message, "error");
   } finally {
     reportBtn.disabled = false;
     searchBtn.disabled = false;
+  }
+}
+
+async function handleSendEmail(e) {
+  e.preventDefault();
+
+  if (!currentReport) {
+    setStatus("먼저 종합 보고서를 생성해 주세요.", "error");
+    return;
+  }
+
+  const email = emailInput.value.trim();
+  if (!email) {
+    setStatus("이메일 주소를 입력해 주세요.", "error");
+    return;
+  }
+
+  emailBtn.disabled = true;
+  setStatus("보고서를 이메일로 전송하는 중...", "loading");
+
+  try {
+    const data = await apiPost("/api/send-report", {
+      email,
+      query: currentQuery,
+      report: currentReport,
+    });
+    setStatus(data.message || "이메일을 전송했습니다.", "success");
+    emailInput.value = "";
+  } catch (err) {
+    setStatus(err.message, "error");
+  } finally {
+    emailBtn.disabled = false;
   }
 }
 
@@ -269,6 +311,7 @@ searchForm.addEventListener("submit", (e) => {
 });
 
 reportBtn.addEventListener("click", handleReport);
+emailForm.addEventListener("submit", handleSendEmail);
 
 document.querySelectorAll(".suggestion-chip").forEach((chip) => {
   chip.addEventListener("click", () => {
