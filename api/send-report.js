@@ -1,5 +1,5 @@
 const { setCorsHeaders, handlePreflight } = require("../lib/gemini");
-const { isValidEmail, sendReportEmail } = require("../lib/email");
+const { isValidEmail, detectSmtpPreset, sendReportEmail } = require("../lib/email");
 
 module.exports = async function handler(req, res) {
   if (handlePreflight(req, res)) return;
@@ -10,16 +10,27 @@ module.exports = async function handler(req, res) {
   }
 
   try {
-    const { email, report, query } = req.body || {};
+    const { email, smtpPassword, report, query } = req.body || {};
     const trimmedEmail = String(email || "").trim().toLowerCase();
     const trimmedQuery = String(query || "").trim();
+    const password = String(smtpPassword || "");
 
     if (!trimmedEmail) {
       return res.status(400).json({ error: "이메일 주소를 입력해 주세요." });
     }
 
     if (!isValidEmail(trimmedEmail)) {
-      return res.status(400).json({ error: "올바른 이메일 주소를 입력해 주세요." });
+      return res.status(400).json({ error: "올바른 이메일 주소 형식이 아닙니다." });
+    }
+
+    if (!detectSmtpPreset(trimmedEmail)) {
+      return res.status(400).json({
+        error: "네이버(@naver.com), Outlook(@outlook.com), Gmail(@gmail.com) 주소만 지원합니다.",
+      });
+    }
+
+    if (!password) {
+      return res.status(400).json({ error: "메일 앱 비밀번호를 입력해 주세요." });
     }
 
     if (!report?.title || !report?.executiveSummary) {
@@ -28,6 +39,7 @@ module.exports = async function handler(req, res) {
 
     const result = await sendReportEmail({
       toEmail: trimmedEmail,
+      smtpPassword: password,
       report,
       query: trimmedQuery || report.title,
     });

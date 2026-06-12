@@ -11,6 +11,9 @@ const reportSection = document.getElementById("report-section");
 const reportContent = document.getElementById("report-content");
 const emailForm = document.getElementById("email-form");
 const emailInput = document.getElementById("email-input");
+const smtpPasswordInput = document.getElementById("smtp-password-input");
+const emailPreview = document.getElementById("email-preview");
+const emailCheckBtn = document.getElementById("email-check-btn");
 const emailBtn = document.getElementById("email-btn");
 const sourcesSection = document.getElementById("sources-section");
 const sourcesList = document.getElementById("sources-list");
@@ -20,6 +23,70 @@ let currentQuery = "";
 let currentArticles = [];
 let currentSources = [];
 let currentReport = null;
+let emailConfirmed = false;
+
+const SUPPORTED_DOMAINS = {
+  "naver.com": "네이버",
+  "outlook.com": "Outlook",
+  "outlook.kr": "Outlook",
+  "hotmail.com": "Outlook",
+  "live.com": "Outlook",
+  "gmail.com": "Gmail",
+  "googlemail.com": "Gmail",
+};
+
+function isValidEmailFormat(email) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
+function getMailProvider(email) {
+  const domain = email.split("@")[1]?.toLowerCase();
+  return SUPPORTED_DOMAINS[domain] || null;
+}
+
+function resetEmailForm() {
+  emailConfirmed = false;
+  emailPreview.classList.add("hidden");
+  emailPreview.textContent = "";
+  emailBtn.classList.add("hidden");
+  emailBtn.disabled = true;
+  emailCheckBtn.classList.remove("hidden");
+}
+
+function handleEmailCheck() {
+  const email = emailInput.value.trim().toLowerCase();
+
+  if (!email) {
+    setStatus("이메일 주소를 입력해 주세요.", "error");
+    return;
+  }
+
+  if (!isValidEmailFormat(email)) {
+    setStatus("올바른 이메일 형식이 아닙니다.", "error");
+    resetEmailForm();
+    return;
+  }
+
+  const provider = getMailProvider(email);
+  if (!provider) {
+    setStatus("네이버, Outlook, Gmail 주소만 지원합니다.", "error");
+    resetEmailForm();
+    return;
+  }
+
+  if (!smtpPasswordInput.value) {
+    setStatus("메일 앱 비밀번호를 입력해 주세요.", "error");
+    return;
+  }
+
+  emailConfirmed = true;
+  emailPreview.textContent = `${email} (${provider}) 으로 보고서를 전송합니다.`;
+  emailPreview.classList.remove("hidden");
+  emailCheckBtn.classList.add("hidden");
+  emailBtn.classList.remove("hidden");
+  emailBtn.disabled = false;
+  clearStatus();
+}
 
 function setStatus(message, type = "") {
   statusEl.textContent = message;
@@ -112,6 +179,9 @@ function renderReport(report) {
   currentReport = report;
   reportSection.classList.remove("hidden");
   emailForm.classList.remove("hidden");
+  resetEmailForm();
+  emailInput.value = "";
+  smtpPasswordInput.value = "";
 
   const sectionsHtml = (report.sections || [])
     .map(
@@ -207,6 +277,7 @@ async function handleSearch(query) {
   reportSection.classList.add("hidden");
   reportContent.innerHTML = "";
   emailForm.classList.add("hidden");
+  resetEmailForm();
   currentReport = null;
 
   resultsTitle.textContent = `"${trimmed}" 검색 결과`;
@@ -281,27 +352,38 @@ async function handleSendEmail(e) {
     return;
   }
 
-  const email = emailInput.value.trim();
-  if (!email) {
-    setStatus("이메일 주소를 입력해 주세요.", "error");
+  if (!emailConfirmed) {
+    setStatus("먼저 '주소 확인' 버튼을 눌러 이메일을 확인해 주세요.", "error");
+    return;
+  }
+
+  const email = emailInput.value.trim().toLowerCase();
+  const smtpPassword = smtpPasswordInput.value;
+
+  if (!email || !smtpPassword) {
+    setStatus("이메일과 앱 비밀번호를 모두 입력해 주세요.", "error");
     return;
   }
 
   emailBtn.disabled = true;
-  setStatus("보고서를 이메일로 전송하는 중...", "loading");
+  emailCheckBtn.disabled = true;
+  setStatus("입력하신 주소로 보고서를 전송하는 중...", "loading");
 
   try {
     const data = await apiPost("/api/send-report", {
       email,
+      smtpPassword,
       query: currentQuery,
       report: currentReport,
     });
     setStatus(data.message || "이메일을 전송했습니다.", "success");
-    emailInput.value = "";
+    smtpPasswordInput.value = "";
+    resetEmailForm();
   } catch (err) {
     setStatus(err.message, "error");
-  } finally {
     emailBtn.disabled = false;
+  } finally {
+    emailCheckBtn.disabled = false;
   }
 }
 
@@ -311,7 +393,13 @@ searchForm.addEventListener("submit", (e) => {
 });
 
 reportBtn.addEventListener("click", handleReport);
+emailCheckBtn.addEventListener("click", handleEmailCheck);
 emailForm.addEventListener("submit", handleSendEmail);
+
+emailInput.addEventListener("input", resetEmailForm);
+smtpPasswordInput.addEventListener("input", () => {
+  if (emailConfirmed) resetEmailForm();
+});
 
 document.querySelectorAll(".suggestion-chip").forEach((chip) => {
   chip.addEventListener("click", () => {

@@ -56,17 +56,33 @@
       <section id="report-section" class="report-section hidden">
         <div id="report-content" class="report-content"></div>
         <form id="email-form" class="email-form hidden">
-          <label for="email-input">보고서를 받을 이메일 (네이버, Outlook 등)</label>
-          <div class="email-form-row">
-            <input
-              id="email-input"
-              type="email"
-              placeholder="example@email.com"
-              autocomplete="email"
-              maxlength="254"
-              required
-            >
-            <button type="submit" id="email-btn">이메일로 보내기</button>
+          <p class="email-form-desc">받을 이메일과 해당 메일의 앱 비밀번호를 입력하세요. 입력한 주소로만 전송됩니다.</p>
+
+          <label for="email-input">받을 이메일</label>
+          <input
+            id="email-input"
+            type="email"
+            placeholder="example@naver.com"
+            autocomplete="email"
+            maxlength="254"
+            required
+          >
+
+          <label for="smtp-password-input">메일 앱 비밀번호</label>
+          <input
+            id="smtp-password-input"
+            type="password"
+            placeholder="네이버/Outlook/Gmail 앱 비밀번호"
+            autocomplete="off"
+            maxlength="128"
+            required
+          >
+
+          <p id="email-preview" class="email-preview hidden"></p>
+
+          <div class="email-form-actions">
+            <button type="button" id="email-check-btn" class="email-check-btn">주소 확인</button>
+            <button type="submit" id="email-btn" class="hidden" disabled>전송하기</button>
           </div>
         </form>
       </section>
