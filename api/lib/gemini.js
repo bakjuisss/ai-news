@@ -26,11 +26,19 @@ function getRecentNewsDateRange() {
   return { today, fromDate };
 }
 
+function normalizePublishedDate(value) {
+  if (!value) return "";
+  const match = String(value).match(/(\d{4})[-./](\d{1,2})[-./](\d{1,2})/);
+  if (!match) return "";
+  const [, year, month, day] = match;
+  return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
+}
 function isWithinRecentNewsRange(publishedAt, fromDate, toDate) {
-  if (!publishedAt || !/^\d{4}-\d{2}-\d{2}$/.test(publishedAt)) {
+  const normalized = normalizePublishedDate(publishedAt);
+  if (!normalized) {
     return false;
   }
-  return publishedAt >= fromDate && publishedAt <= toDate;
+  return normalized >= fromDate && normalized <= toDate;
 }
 
 function parseGeminiError(status, geminiData) {
@@ -165,6 +173,7 @@ module.exports = {
   getTodayKST,
   getDaysAgoKST,
   getRecentNewsDateRange,
+  normalizePublishedDate,
   isWithinRecentNewsRange,
   parseGeminiError,
   parseGeminiResponse,

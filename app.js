@@ -178,9 +178,7 @@ async function handleSearch(query) {
   reportSection.classList.add("hidden");
   reportContent.innerHTML = "";
 
-    resultsTitle.textContent = data.dateRange
-      ? `"${trimmed}" 검색 결과 (최근 2주: ${data.dateRange.from} ~ ${data.dateRange.to})`
-      : `"${trimmed}" 검색 결과`;
+  resultsTitle.textContent = `"${trimmed}" 검색 결과`;
   searchBtn.disabled = true;
   reportBtn.disabled = true;
   setStatus("뉴스를 검색하고 요약하는 중...", "loading");
@@ -188,6 +186,10 @@ async function handleSearch(query) {
 
   try {
     const data = await apiPost("/api/search", { query: trimmed });
+
+    resultsTitle.textContent = data.dateRange
+      ? `"${trimmed}" 검색 결과 (최근 2주: ${data.dateRange.from} ~ ${data.dateRange.to})`
+      : `"${trimmed}" 검색 결과`;
 
     currentArticles = data.articles || [];
     currentSources = data.sources || [];
@@ -197,7 +199,11 @@ async function handleSearch(query) {
     clearStatus();
 
     if (!currentArticles.length) {
-      setStatus("검색 결과가 없습니다.", "error");
+      const hint =
+        data.totalFound > 0
+          ? "최근 2주 이내 기사만 표시합니다. 해당 기간에 맞는 결과가 없습니다."
+          : "검색 결과가 없습니다.";
+      setStatus(hint, "error");
     }
   } catch (err) {
     renderArticles([]);

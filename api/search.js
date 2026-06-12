@@ -1,5 +1,6 @@
 const {
   getRecentNewsDateRange,
+  normalizePublishedDate,
   isWithinRecentNewsRange,
   callGeminiWithSearch,
   setCorsHeaders,
@@ -43,7 +44,7 @@ function enrichArticlesWithSources(articles, groundingSources) {
       title: article.title || fallback?.title || "제목 없음",
       url: article.url || fallback?.uri || "#",
       source: article.source || "출처 미상",
-      publishedAt: article.publishedAt || "",
+      publishedAt: normalizePublishedDate(article.publishedAt) || "",
       summary: article.summary || "",
     };
   });
@@ -94,16 +95,17 @@ module.exports = async function handler(req, res) {
       return res.status(result.error.status).json(result.error.body);
     }
 
-    const articles = filterRecentArticles(
-      enrichArticlesWithSources(result.parsed.articles || [], result.grounding.sources),
-      fromDate,
-      today
+    const enriched = enrichArticlesWithSources(
+      result.parsed.articles || [],
+      result.grounding.sources
     );
+    const articles = filterRecentArticles(enriched, fromDate, today);
 
     return res.status(200).json({
       query: trimmedQuery,
       dateRange: { from: fromDate, to: today },
       articles,
+      totalFound: enriched.length,
       sources: result.grounding.sources,
       searchEntryPoint: result.grounding.searchEntryPoint,
     });
