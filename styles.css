@@ -748,6 +748,258 @@ body {
   color: var(--text-dim);
 }
 
+.erp-hero {
+  text-align: center;
+  margin-bottom: 1.5rem;
+  padding: 0.5rem 0 1rem;
+}
+
+.erp-hero-badge {
+  display: inline-block;
+  padding: 0.35rem 0.75rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #fff;
+  background: var(--accent-gradient);
+  border-radius: 999px;
+}
+
+.erp-hero-title {
+  margin: 1rem 0 0.75rem;
+  font-size: clamp(1.6rem, 4vw, 2.2rem);
+  line-height: 1.2;
+  letter-spacing: -0.03em;
+}
+
+.erp-hero-desc {
+  margin: 0 auto;
+  max-width: 640px;
+  color: var(--text-muted);
+  font-size: 0.95rem;
+}
+
+.erp-card {
+  padding: 1.25rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  margin-bottom: 1.25rem;
+}
+
+.erp-card-title {
+  margin: 0 0 0.35rem;
+  font-size: 1rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.erp-dropzone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 2rem 1.5rem;
+  margin-bottom: 1rem;
+  border: 2px dashed var(--border-bright);
+  border-radius: var(--radius);
+  background: var(--surface-solid);
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.erp-dropzone:hover,
+.erp-dropzone.dragover {
+  border-color: var(--accent-bright);
+  background: var(--accent-soft);
+}
+
+.erp-dropzone-icon {
+  width: 2.25rem;
+  height: 2.25rem;
+  color: var(--text-muted);
+}
+
+.erp-dropzone-title {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.erp-dropzone-sub {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.erp-file-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.erp-file-card {
+  padding: 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-solid);
+  font-size: 0.8rem;
+}
+
+.erp-file-card.loaded {
+  border-color: var(--border-bright);
+  background: var(--accent-soft);
+}
+
+.erp-file-card-head {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-weight: 700;
+}
+
+.erp-file-dot {
+  font-size: 0.65rem;
+}
+
+.erp-file-card-meta {
+  margin-top: 0.25rem;
+  color: var(--text-muted);
+}
+
+.erp-validation {
+  margin-bottom: 1rem;
+  padding: 0.85rem 1rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.875rem;
+}
+
+.erp-validation-ok {
+  border: 1px solid rgba(52, 211, 153, 0.35);
+  background: var(--success-bg);
+}
+
+.erp-validation-error {
+  border: 1px solid rgba(248, 113, 113, 0.35);
+  background: var(--error-bg);
+}
+
+.erp-validation-pending {
+  border: 1px dashed var(--border-bright);
+  background: var(--surface-solid);
+}
+
+.erp-validation ul {
+  margin: 0.5rem 0 0;
+  padding-left: 1.2rem;
+}
+
+.erp-sample-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  padding: 1rem;
+  background: var(--surface-solid);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+
+.erp-sample-title {
+  margin: 0 0 0.25rem;
+  font-weight: 700;
+}
+
+.erp-steps {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 0.75rem;
+}
+
+.erp-step-card {
+  padding: 1rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.erp-step-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #fff;
+  background: var(--accent-gradient);
+}
+
+.erp-step-card h4 {
+  margin: 0.65rem 0 0.35rem;
+  font-size: 0.9rem;
+}
+
+.erp-step-card p {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.erp-raw-tabs {
+  display: flex;
+  gap: 0.25rem;
+  margin-bottom: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.erp-raw-tab {
+  padding: 0.45rem 0.85rem;
+  font-family: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: var(--surface-solid);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.erp-raw-tab.active {
+  color: #fff;
+  background: var(--accent-gradient);
+  border-color: transparent;
+}
+
+.erp-kpi-card.highlight {
+  border-color: var(--border-bright);
+  background: var(--accent-soft);
+}
+
+.erp-kpi-sub {
+  display: block;
+  margin-top: 0.25rem;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-weight: 400;
+}
+
+.erp-charts-wide {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1rem;
+}
+
+.erp-bar-warn {
+  background: linear-gradient(135deg, #f59e0b, #f97316);
+}
+
 .erp-toolbar {
   display: flex;
   align-items: flex-end;

@@ -5,64 +5,76 @@ const {
   handlePreflight,
 } = require("../lib/gemini");
 
-const MAX_SAMPLE_ROWS = 80;
+function formatKRW(n) {
+  if (n == null || Number.isNaN(n)) return "-";
+  return new Intl.NumberFormat("ko-KR").format(Math.round(n)) + "원";
+}
 
-function buildErpPrompt(datasetName, today, stats, sampleRows, focus) {
-  const columnSummary = (stats.columns || [])
-    .map((col) => {
-      let detail = `- ${col.name} (${col.type})`;
-      if (col.type === "number") {
-        detail += `: 합계 ${col.sum}, 평균 ${col.avg}, 최소 ${col.min}, 최대 ${col.max}`;
-      } else if (col.topValues?.length) {
-        detail += `: 상위값 ${col.topValues.map((v) => `${v.value}(${v.count})`).join(", ")}`;
-      } else {
-        detail += `: 고유값 ${col.uniqueCount}개`;
-      }
-      return detail;
-    })
+function buildErpPrompt(datasetName, today, stats, focus) {
+  const tables = stats.tables || {};
+  const tableSummary = Object.entries(tables)
+    .map(([key, t]) => `- ${t.label || key}: ${t.rowCount}행`)
     .join("\n");
 
-  const rowsPreview = sampleRows
-    .slice(0, MAX_SAMPLE_ROWS)
-    .map((row, i) => `${i + 1}. ${row.join(" | ")}`)
-    .join("\n");
+  const a = stats.analytics || {};
+  const k = a.kpis || {};
+
+  const kpiBlock = `
+총 매출: ${formatKRW(k.totalRevenue)}
+매출총이익: ${formatKRW(k.grossProfit)} (이익률 ${k.marginPct?.toFixed?.(1) || "-"}%)
+주문 건수: ${k.orderCount || "-"}
+평균 객단가: ${formatKRW(k.avgOrderValue)}
+고객 수: ${k.customerCount || "-"} / 상품 수: ${k.productCount || "-"}
+총 재고 수량: ${k.totalStock || "-"}
+`;
+
+  const topProducts = (a.topProducts || [])
+    .slice(0, 5)
+    .map((p) => `${p.name}: ${formatKRW(p.value)}`)
+    .join(", ");
+
+  const topCustomers = (a.topCustomers || [])
+    .slice(0, 5)
+    .map((c) => `${c.name}: ${formatKRW(c.value)}`)
+    .join(", ");
+
+  const monthly = (a.monthlyTrend || [])
+    .slice(-6)
+    .map((m) => `${m.month}: ${formatKRW(m.value)}`)
+    .join(", ");
 
   const focusLine = focus ? `\n분석 초점: ${focus}` : "";
 
-  return `다음 ERP/경영 데이터를 분석하여 경영 보고서를 작성하세요.
+  return `다음 ERP 4-테이블 데이터(상품·고객·주문·주문상세) 분석 보고서를 작성하세요.
 
-데이터셋 이름: ${datasetName || "미지정"}
+데이터셋: ${datasetName || "ERP 데이터"}
 분석 기준일(한국): ${today}
-총 행 수: ${stats.rowCount}
-컬럼 수: ${stats.columnCount}
+총 행 수: ${stats.rowCount || "-"}
 ${focusLine}
 
-컬럼 통계:
-${columnSummary || "(없음)"}
+테이블별 행 수:
+${tableSummary}
 
-샘플 데이터 (최대 ${MAX_SAMPLE_ROWS}행):
-${rowsPreview || "(없음)"}
+핵심 KPI:
+${kpiBlock}
+
+월별 매출(최근): ${monthly || "없음"}
+상위 상품: ${topProducts || "없음"}
+상위 고객: ${topCustomers || "없음"}
 
 요구사항:
-1. 제공된 통계와 샘플 데이터만 근거로 분석하세요. 없는 수치를 만들지 마세요.
-2. sections에는 "데이터 개요", "핵심 지표 분석", "리스크 및 이상 징후", "개선 제안"을 포함하세요.
-3. executiveSummary는 2~3문장으로 작성하세요.
-4. keyTakeaways는 3~5개 핵심 인사이트를 나열하세요.
-5. recommendations는 실행 가능한 제안 3~5개를 구체적으로 작성하세요.
-6. 전체를 한국어로 작성하세요.
+1. 위 수치만 근거로 분석하세요. 없는 수치를 만들지 마세요.
+2. sections: "경영 요약", "매출·수익성 분석", "고객·채널 인사이트", "재고·리스크", "개선 제안"
+3. executiveSummary 2~3문장, keyTakeaways 3~5개, recommendations 3~5개
+4. 한국어로 작성
 
-반드시 아래 JSON 형식만 출력하세요.
+JSON만 출력:
 {
   "title": "보고서 제목",
-  "executiveSummary": "전체 요약",
-  "sections": [
-    { "heading": "데이터 개요", "content": "..." },
-    { "heading": "핵심 지표 분석", "content": "..." },
-    { "heading": "리스크 및 이상 징후", "content": "..." },
-    { "heading": "개선 제안", "content": "..." }
-  ],
-  "keyTakeaways": ["...", "..."],
-  "recommendations": ["...", "..."]
+  "executiveSummary": "...",
+  "sections": [{"heading":"...","content":"..."}],
+  "keyTakeaways": ["..."],
+  "recommendations": ["..."]
 }`;
 }
 
@@ -77,23 +89,24 @@ module.exports = async function handler(req, res) {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
     return res.status(500).json({
-      error:
-        "GEMINI_API_KEY 환경변수가 설정되지 않았습니다. Vercel Settings → Environment Variables에서 추가한 뒤 Redeploy 해 주세요.",
+      error: "GEMINI_API_KEY가 설정되지 않았습니다. Vercel에서 추가 후 Redeploy 해 주세요.",
     });
   }
 
   try {
-    const { datasetName, stats, sampleRows = [], focus = "" } = req.body || {};
+    const { datasetName, stats, focus = "" } = req.body || {};
 
-    if (!stats?.rowCount || stats.rowCount < 1) {
-      return res.status(400).json({ error: "분석할 데이터가 없습니다. 먼저 데이터를 입력하거나 업로드해 주세요." });
+    if (!stats?.analytics?.kpis) {
+      return res.status(400).json({
+        error: "분석할 ERP 데이터가 없습니다. 4개 CSV를 업로드하고 검증을 완료해 주세요.",
+      });
     }
 
     const today = getTodayKST();
     const result = await callGemini(apiKey, {
       systemInstruction:
-        "당신은 ERP 및 경영 데이터 분석 전문가입니다. 제공된 데이터 통계와 샘플만을 근거로 객관적인 분석 보고서를 작성합니다. JSON만 출력하세요.",
-      prompt: buildErpPrompt(datasetName, today, stats, sampleRows, String(focus || "").trim()),
+        "당신은 ERP 경영 데이터 분석 전문가입니다. 제공된 KPI와 집계만 근거로 객관적인 보고서를 작성합니다. JSON만 출력하세요.",
+      prompt: buildErpPrompt(datasetName, today, stats, String(focus || "").trim()),
       temperature: 0.3,
     });
 

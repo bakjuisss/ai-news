@@ -107,16 +107,11 @@
       <section id="panel-erp" class="panel hidden" aria-label="ERP 분석 시스템">
         <div id="erp-status" class="status" role="status" aria-live="polite"></div>
 
-        <div class="erp-toolbar">
-          <div class="erp-toolbar-left">
-            <label for="erp-dataset-name" class="erp-label">데이터셋 이름</label>
-            <input id="erp-dataset-name" type="text" placeholder="예: 2026년 1분기 매출" maxlength="100">
-          </div>
-          <div class="erp-toolbar-actions">
-            <button type="button" id="erp-sample-btn" class="erp-btn-secondary">샘플 데이터</button>
-            <button type="button" id="erp-clear-btn" class="erp-btn-secondary">전체 삭제</button>
-          </div>
-        </div>
+        <section class="erp-hero">
+          <span class="erp-hero-badge">ERP 데이터 분석 자동화 · Gemini 보고서</span>
+          <h2 class="erp-hero-title">ERP 데이터 분석<br>대시보드 &amp; 자동 보고서</h2>
+          <p class="erp-hero-desc">4개 ERP CSV(상품·고객·주문·주문상세)를 업로드하면 경영 대시보드가 생성되고, Gemini AI가 분석 보고서를 작성합니다.</p>
+        </section>
 
         <nav class="erp-subnav" aria-label="ERP 하위 메뉴">
           <button type="button" class="erp-subtab active" data-erp-tab="input">데이터 입력</button>
@@ -127,37 +122,50 @@
 
         <!-- 데이터 입력 -->
         <div id="erp-tab-input" class="erp-tab-panel">
-          <div class="erp-input-modes">
-            <button type="button" class="erp-mode-btn active" data-input-mode="manual">수동 입력</button>
-            <button type="button" class="erp-mode-btn" data-input-mode="upload">파일 업로드</button>
+          <div class="erp-card">
+            <h3 class="erp-card-title">ERP 데이터 입력</h3>
+            <p class="erp-hint">4개 CSV를 업로드하거나 샘플 데이터를 불러오세요. 4개 파일이 모두 등록되면 유효성 검사가 실행됩니다.</p>
+
+            <div id="erp-dropzone" class="erp-dropzone" tabindex="0" role="button" aria-label="CSV 파일 업로드">
+              <svg class="erp-dropzone-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5"/>
+              </svg>
+              <p class="erp-dropzone-title">4개 ERP CSV 파일을 끌어다 놓거나 클릭하여 업로드</p>
+              <p class="erp-dropzone-sub">products.csv · customers.csv · sales_orders.csv · sales_order_items.csv</p>
+              <input id="erp-file-input" type="file" accept=".csv,text/csv" multiple hidden>
+            </div>
+
+            <div id="erp-file-grid" class="erp-file-grid"></div>
+            <div id="erp-validation" class="erp-validation hidden"></div>
+
+            <div class="erp-sample-row">
+              <div>
+                <p class="erp-sample-title">처음이신가요?</p>
+                <p class="erp-hint">내장 샘플 ERP 데이터(약 2.3만 행)를 불러와 바로 체험해 보세요.</p>
+              </div>
+              <div class="erp-toolbar-actions">
+                <button type="button" id="erp-sample-btn" class="erp-btn-primary">샘플 데이터 불러오기</button>
+                <button type="button" id="erp-clear-btn" class="erp-btn-secondary">전체 삭제</button>
+              </div>
+            </div>
           </div>
 
-          <div id="erp-manual-panel" class="erp-input-panel">
-            <p class="erp-hint">열 이름을 설정하고 행을 추가한 뒤 <strong>데이터 적용</strong>을 누르세요.</p>
-            <div class="erp-column-editor" id="erp-column-editor"></div>
-            <div class="erp-manual-actions">
-              <button type="button" id="erp-add-column" class="erp-btn-secondary">열 추가</button>
-              <button type="button" id="erp-add-row" class="erp-btn-secondary">행 추가</button>
-              <span id="erp-manual-meta" class="erp-manual-meta"></span>
-            </div>
-            <div class="erp-table-wrap">
-              <table class="erp-table" id="erp-manual-table">
-                <thead id="erp-manual-thead"></thead>
-                <tbody id="erp-manual-tbody"></tbody>
-              </table>
-            </div>
-            <button type="button" id="erp-apply-manual" class="erp-btn-primary">데이터 적용</button>
-          </div>
-
-          <div id="erp-upload-panel" class="erp-input-panel hidden">
-            <p class="erp-hint">CSV 파일을 업로드하세요. 첫 행은 열 이름(헤더)으로 사용됩니다.</p>
-            <div class="erp-upload-zone">
-              <input id="erp-file-input" type="file" accept=".csv,text/csv" hidden>
-              <button type="button" id="erp-file-trigger" class="erp-btn-secondary">CSV 파일 선택</button>
-              <span id="erp-file-name" class="erp-file-name">선택된 파일 없음</span>
-            </div>
-            <div id="erp-upload-preview" class="erp-table-wrap hidden"></div>
-            <button type="button" id="erp-apply-upload" class="erp-btn-primary hidden">업로드 데이터 적용</button>
+          <div class="erp-steps">
+            <article class="erp-step-card">
+              <span class="erp-step-num">1</span>
+              <h4>데이터 검증</h4>
+              <p>4개 테이블 스키마와 참조 무결성(주문·고객·상품)을 검사합니다.</p>
+            </article>
+            <article class="erp-step-card">
+              <span class="erp-step-num">2</span>
+              <h4>대시보드 생성</h4>
+              <p>매출·수익성·고객·재고 KPI와 차트를 자동 시각화합니다.</p>
+            </article>
+            <article class="erp-step-card">
+              <span class="erp-step-num">3</span>
+              <h4>AI 보고서</h4>
+              <p>Gemini가 ERP 데이터 기반 경영 분석 보고서를 생성합니다.</p>
+            </article>
           </div>
         </div>
 
@@ -168,7 +176,7 @@
           </div>
           <div id="erp-dashboard-content" class="hidden">
             <div id="erp-kpi-grid" class="erp-kpi-grid"></div>
-            <div id="erp-charts" class="erp-charts"></div>
+            <div id="erp-charts" class="erp-charts erp-charts-wide"></div>
           </div>
         </div>
 
@@ -178,6 +186,12 @@
             <p>원본 데이터가 없습니다. <button type="button" class="erp-link-btn" data-goto-tab="input">데이터 입력</button>에서 등록해 주세요.</p>
           </div>
           <div id="erp-raw-content" class="hidden">
+            <nav class="erp-raw-tabs">
+              <button type="button" class="erp-raw-tab active" data-raw-table="products">상품</button>
+              <button type="button" class="erp-raw-tab" data-raw-table="customers">고객</button>
+              <button type="button" class="erp-raw-tab" data-raw-table="sales_orders">주문</button>
+              <button type="button" class="erp-raw-tab" data-raw-table="sales_order_items">주문상세</button>
+            </nav>
             <div class="erp-raw-toolbar">
               <input id="erp-raw-filter" type="search" placeholder="원본 데이터 검색..." maxlength="100">
               <span id="erp-raw-count" class="erp-raw-count"></span>
@@ -199,7 +213,7 @@
           </div>
           <div id="erp-report-controls" class="erp-report-controls hidden">
             <label for="erp-focus-input">분석 초점 (선택)</label>
-            <input id="erp-focus-input" type="text" placeholder="예: 매출 감소 원인, 재고 과잉 품목" maxlength="200">
+            <input id="erp-focus-input" type="text" placeholder="예: 매출 감소 원인, 재고 부족 품목, 채널별 성과" maxlength="200">
             <button type="button" id="erp-generate-report" class="erp-btn-primary">AI 분석 보고서 생성</button>
           </div>
           <div id="erp-report-content" class="erp-report-content hidden"></div>
@@ -217,6 +231,7 @@
 
   <script src="app.js"></script>
   <script src="news.js"></script>
-  <script src="erp.js?v=3"></script>
+  <script src="erp-data.js?v=4"></script>
+  <script src="erp.js?v=4"></script>
 </body>
 </html>
