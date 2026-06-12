@@ -809,6 +809,7 @@ body {
   background: var(--surface-solid);
   cursor: pointer;
   transition: border-color 0.2s, background 0.2s;
+  user-select: none;
 }
 
 .erp-dropzone:hover,

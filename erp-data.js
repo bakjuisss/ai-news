@@ -365,18 +365,103 @@ async function loadSampleTables() {
   return dataset;
 }
 
-function detectFileTable(fileName) {
-  const lower = fileName.toLowerCase();
-  for (const def of Object.values(ERP_TABLES)) {
-    if (lower === def.file || lower.includes(def.key.replace(/_/g, ""))) {
-      return def.key;
-    }
-    if (lower.includes(def.file.replace(".csv", ""))) return def.key;
+function isExcelFile(fileName) {
+  return /\.(xlsx|xls)$/i.test(fileName || "");
+}
+
+function isCsvFile(fileName) {
+  return /\.csv$/i.test(fileName || "");
+}
+
+function rowsToTable(headers, rows) {
+  const cleanHeaders = headers.map((h) => String(h ?? "").trim());
+  const cleanRows = rows
+    .map((row) => cleanHeaders.map((_, i) => String(row[i] ?? "").trim()))
+    .filter((row) => row.some((cell) => cell !== ""));
+  const objects = cleanRows.map((row) => {
+    const obj = {};
+    cleanHeaders.forEach((h, i) => {
+      obj[h] = row[i];
+    });
+    return obj;
+  });
+  return { headers: cleanHeaders, rows: cleanRows, objects };
+}
+
+let xlsxLoadPromise = null;
+
+function loadXlsxLib() {
+  if (window.XLSX) return Promise.resolve(window.XLSX);
+  if (xlsxLoadPromise) return xlsxLoadPromise;
+
+  xlsxLoadPromise = new Promise((resolve, reject) => {
+    const script = document.createElement("script");
+    script.src = "https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js";
+    script.async = true;
+    script.onload = () => {
+      if (window.XLSX) resolve(window.XLSX);
+      else reject(new Error("Excel 라이브러리 초기화에 실패했습니다."));
+    };
+    script.onerror = () => reject(new Error("Excel 라이브러리를 불러오지 못했습니다."));
+    document.head.appendChild(script);
+  });
+
+  return xlsxLoadPromise;
+}
+
+async function parseTableFromExcel(file) {
+  const XLSX = await loadXlsxLib();
+  const buffer = await file.arrayBuffer();
+  const workbook = XLSX.read(buffer, { type: "array" });
+  const sheetName = workbook.SheetNames[0];
+  if (!sheetName) {
+    throw new Error(`${file.name}: 시트가 비어 있습니다.`);
   }
-  if (lower.includes("product")) return "products";
-  if (lower.includes("customer")) return "customers";
-  if (lower.includes("order_item") || lower.includes("order-item")) return "sales_order_items";
-  if (lower.includes("order")) return "sales_orders";
+  const sheet = workbook.Sheets[sheetName];
+  const matrix = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "" });
+  if (!matrix.length) {
+    throw new Error(`${file.name}: 데이터가 없습니다.`);
+  }
+  const headers = matrix[0].map((h) => String(h).trim());
+  const rows = matrix.slice(1);
+  return rowsToTable(headers, rows);
+}
+
+async function parseTableFromFile(file) {
+  const name = file.name || "";
+  if (isExcelFile(name)) {
+    return parseTableFromExcel(file);
+  }
+  if (isCsvFile(name) || !/\.[a-z0-9]+$/i.test(name)) {
+    const text = await file.text();
+    const parsed = parseTableFromCSV(text);
+    return {
+      headers: parsed.headers,
+      rows: parsed.rows,
+      objects: parsed.objects,
+    };
+  }
+  throw new Error(`${name}: CSV 또는 Excel(.xlsx, .xls) 파일만 지원합니다.`);
+}
+
+function detectFileTable(fileName) {
+  const base = String(fileName || "")
+    .toLowerCase()
+    .replace(/\.(csv|xlsx|xls)$/i, "");
+
+  if (base === "products" || base === "product" || base.includes("product")) return "products";
+  if (base === "customers" || base === "customer" || base.includes("customer")) return "customers";
+  if (
+    base === "sales_order_items" ||
+    base.includes("order_item") ||
+    base.includes("order-item") ||
+    base.includes("orderitems")
+  ) {
+    return "sales_order_items";
+  }
+  if (base === "sales_orders" || base.includes("sales_order") || base.includes("order")) {
+    return "sales_orders";
+  }
   return null;
 }
 
@@ -408,6 +493,9 @@ window.ErpData = {
   SAMPLE_BASE,
   parseCSV,
   parseTableFromCSV,
+  parseTableFromFile,
+  isExcelFile,
+  isCsvFile,
   validateDataset,
   buildAnalytics,
   loadSampleTables,

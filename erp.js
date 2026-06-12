@@ -1,6 +1,6 @@
 /** ERP 분석 UI — erp-five-lemon 스타일 4-table CSV 기반 */
 
-let dataset = ErpData.getEmptyDataset();
+let dataset = null;
 let validation = null;
 let analytics = null;
 let currentReport = null;
@@ -337,24 +337,54 @@ async function ingestFiles(fileList) {
   const files = Array.from(fileList || []);
   if (!files.length) return;
 
+  if (!window.ErpData) {
+    setStatus("ERP 데이터 모듈을 불러오지 못했습니다. 페이지를 새로고침해 주세요.", "error");
+    return;
+  }
+
+  if (!dataset) dataset = ErpData.getEmptyDataset();
+
+  setStatus(`${files.length}개 파일을 처리하는 중...`, "loading");
+  let loaded = 0;
+  const errors = [];
+
   for (const file of files) {
     const tableKey = ErpData.detectFileTable(file.name);
     if (!tableKey) {
-      setStatus(`인식할 수 없는 파일: ${file.name}`, "error");
+      errors.push(`${file.name}: 파일명을 인식하지 못했습니다.`);
       continue;
     }
-    const text = await file.text();
-    dataset[tableKey] = ErpData.parseTableFromCSV(text);
+
+    try {
+      dataset[tableKey] = await ErpData.parseTableFromFile(file);
+      loaded++;
+    } catch (err) {
+      errors.push(err.message || `${file.name}: 처리 실패`);
+    }
+  }
+
+  if (!loaded && errors.length) {
+    setStatus(errors[0], "error");
+    return;
   }
 
   dataset.source = "upload";
   dataset.loadedAt = new Date().toISOString();
   refreshState();
-  clearStatus();
+
+  if (errors.length) {
+    setStatus(`${loaded}개 적용, 오류 ${errors.length}건: ${errors[0]}`, "error");
+    return;
+  }
 
   if (isReady()) {
     setStatus("4개 ERP 데이터 검증 완료. 대시보드를 확인하세요.", "success");
     setTimeout(clearStatus, 3000);
+  } else {
+    const summary = ErpData.getTableSummary(dataset);
+    const count = Object.values(summary).filter((s) => s.loaded).length;
+    setStatus(`${count}/4 테이블 등록됨. 나머지 파일도 업로드해 주세요.`, "success");
+    setTimeout(clearStatus, 2500);
   }
 }
 
@@ -372,7 +402,7 @@ async function loadSample() {
 }
 
 function clearAll() {
-  if (!validation?.totalRows && !dataset.source) return;
+  if (!validation?.totalRows && !dataset?.source) return;
   if (!confirm("등록된 ERP 데이터를 모두 삭제할까요?")) return;
   dataset = ErpData.getEmptyDataset();
   validation = null;
@@ -524,7 +554,6 @@ function bindEvents() {
   const dropzone = $("erp-dropzone");
   const fileInput = $("erp-file-input");
 
-  dropzone?.addEventListener("click", () => fileInput?.click());
   dropzone?.addEventListener("dragover", (e) => {
     e.preventDefault();
     dropzone.classList.add("dragover");
@@ -545,6 +574,12 @@ function bindEvents() {
 }
 
 function bootErp() {
+  if (!window.ErpData) {
+    setStatus("ERP 모듈 로드 실패. erp-data.js를 확인해 주세요.", "error");
+    return;
+  }
+
+  dataset = ErpData.getEmptyDataset();
   bindEvents();
   refreshState();
   window.ErpModule = {
