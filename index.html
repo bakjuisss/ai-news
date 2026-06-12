@@ -107,42 +107,105 @@
       <section id="panel-erp" class="panel hidden" aria-label="ERP 분석 시스템">
         <div id="erp-status" class="status" role="status" aria-live="polite"></div>
 
-        <section class="erp-hero">
-          <h2>ERP 분석 시스템</h2>
-          <p>ERP 데이터를 AI로 분석하고, 경영 인사이트와 보고서를 생성합니다. (준비 중)</p>
-        </section>
-
-        <div class="erp-grid">
-          <article class="erp-card">
-            <span class="erp-card-icon" aria-hidden="true">📊</span>
-            <h3>재무 분석</h3>
-            <p>매출·비용·손익 데이터를 분석하고 핵심 지표를 요약합니다.</p>
-            <span class="erp-badge">준비 중</span>
-          </article>
-          <article class="erp-card">
-            <span class="erp-card-icon" aria-hidden="true">📦</span>
-            <h3>재고 · 물류</h3>
-            <p>재고 회전율, 입출고 추이, 부족/과잉 재고를 분석합니다.</p>
-            <span class="erp-badge">준비 중</span>
-          </article>
-          <article class="erp-card">
-            <span class="erp-card-icon" aria-hidden="true">📈</span>
-            <h3>매출 트렌드</h3>
-            <p>기간별 매출 변화와 채널·제품별 성과를 비교합니다.</p>
-            <span class="erp-badge">준비 중</span>
-          </article>
-          <article class="erp-card">
-            <span class="erp-card-icon" aria-hidden="true">🤖</span>
-            <h3>AI 경영 보고서</h3>
-            <p>ERP 데이터 기반 종합 경영 보고서를 자동 생성합니다.</p>
-            <span class="erp-badge">준비 중</span>
-          </article>
+        <div class="erp-toolbar">
+          <div class="erp-toolbar-left">
+            <label for="erp-dataset-name" class="erp-label">데이터셋 이름</label>
+            <input id="erp-dataset-name" type="text" placeholder="예: 2026년 1분기 매출" maxlength="100">
+          </div>
+          <div class="erp-toolbar-actions">
+            <button type="button" id="erp-sample-btn" class="erp-btn-secondary">샘플 데이터</button>
+            <button type="button" id="erp-clear-btn" class="erp-btn-secondary">전체 삭제</button>
+          </div>
         </div>
 
-        <section class="erp-coming">
-          <h3>곧 제공 예정</h3>
-          <p>ERP 연동 및 AI 분석 기능은 순차적으로 오픈됩니다. News Report 메뉴는 지금 바로 이용할 수 있습니다.</p>
-        </section>
+        <nav class="erp-subnav" aria-label="ERP 하위 메뉴">
+          <button type="button" class="erp-subtab active" data-erp-tab="input">데이터 입력</button>
+          <button type="button" class="erp-subtab" data-erp-tab="dashboard">대시보드</button>
+          <button type="button" class="erp-subtab" data-erp-tab="raw">원본 데이터</button>
+          <button type="button" class="erp-subtab" data-erp-tab="report">분석 보고서</button>
+        </nav>
+
+        <!-- 데이터 입력 -->
+        <div id="erp-tab-input" class="erp-tab-panel">
+          <div class="erp-input-modes">
+            <button type="button" class="erp-mode-btn active" data-input-mode="manual">수동 입력</button>
+            <button type="button" class="erp-mode-btn" data-input-mode="upload">파일 업로드</button>
+          </div>
+
+          <div id="erp-manual-panel" class="erp-input-panel">
+            <p class="erp-hint">열 이름을 설정하고 행을 추가한 뒤 <strong>데이터 적용</strong>을 누르세요.</p>
+            <div class="erp-column-editor" id="erp-column-editor"></div>
+            <div class="erp-manual-actions">
+              <button type="button" id="erp-add-column" class="erp-btn-secondary">열 추가</button>
+              <button type="button" id="erp-add-row" class="erp-btn-secondary">행 추가</button>
+            </div>
+            <div class="erp-table-wrap">
+              <table class="erp-table" id="erp-manual-table">
+                <thead id="erp-manual-thead"></thead>
+                <tbody id="erp-manual-tbody"></tbody>
+              </table>
+            </div>
+            <button type="button" id="erp-apply-manual" class="erp-btn-primary">데이터 적용</button>
+          </div>
+
+          <div id="erp-upload-panel" class="erp-input-panel hidden">
+            <p class="erp-hint">CSV 파일을 업로드하세요. 첫 행은 열 이름(헤더)으로 사용됩니다.</p>
+            <div class="erp-upload-zone">
+              <input id="erp-file-input" type="file" accept=".csv,text/csv" hidden>
+              <button type="button" id="erp-file-trigger" class="erp-btn-secondary">CSV 파일 선택</button>
+              <span id="erp-file-name" class="erp-file-name">선택된 파일 없음</span>
+            </div>
+            <div id="erp-upload-preview" class="erp-table-wrap hidden"></div>
+            <button type="button" id="erp-apply-upload" class="erp-btn-primary hidden">업로드 데이터 적용</button>
+          </div>
+        </div>
+
+        <!-- 대시보드 -->
+        <div id="erp-tab-dashboard" class="erp-tab-panel hidden">
+          <div id="erp-dashboard-empty" class="erp-empty">
+            <p>표시할 데이터가 없습니다. <button type="button" class="erp-link-btn" data-goto-tab="input">데이터 입력</button>에서 데이터를 등록해 주세요.</p>
+          </div>
+          <div id="erp-dashboard-content" class="hidden">
+            <div id="erp-kpi-grid" class="erp-kpi-grid"></div>
+            <div id="erp-charts" class="erp-charts"></div>
+          </div>
+        </div>
+
+        <!-- 원본 데이터 -->
+        <div id="erp-tab-raw" class="erp-tab-panel hidden">
+          <div id="erp-raw-empty" class="erp-empty">
+            <p>원본 데이터가 없습니다. <button type="button" class="erp-link-btn" data-goto-tab="input">데이터 입력</button>에서 등록해 주세요.</p>
+          </div>
+          <div id="erp-raw-content" class="hidden">
+            <div class="erp-raw-toolbar">
+              <input id="erp-raw-filter" type="search" placeholder="원본 데이터 검색..." maxlength="100">
+              <span id="erp-raw-count" class="erp-raw-count"></span>
+              <button type="button" id="erp-export-csv" class="erp-btn-secondary">CSV 내보내기</button>
+            </div>
+            <div class="erp-table-wrap erp-table-wrap-scroll">
+              <table class="erp-table erp-table-raw" id="erp-raw-table">
+                <thead id="erp-raw-thead"></thead>
+                <tbody id="erp-raw-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- 분석 보고서 -->
+        <div id="erp-tab-report" class="erp-tab-panel hidden">
+          <div id="erp-report-empty" class="erp-empty">
+            <p>분석할 데이터가 없습니다. 먼저 데이터를 등록해 주세요.</p>
+          </div>
+          <div id="erp-report-controls" class="erp-report-controls hidden">
+            <label for="erp-focus-input">분석 초점 (선택)</label>
+            <input id="erp-focus-input" type="text" placeholder="예: 매출 감소 원인, 재고 과잉 품목" maxlength="200">
+            <button type="button" id="erp-generate-report" class="erp-btn-primary">AI 분석 보고서 생성</button>
+          </div>
+          <div id="erp-report-content" class="erp-report-content hidden"></div>
+          <div class="erp-report-actions hidden" id="erp-report-actions">
+            <button type="button" id="erp-download-report" class="erp-btn-secondary">보고서 HTML 저장</button>
+          </div>
+        </div>
       </section>
     </main>
 

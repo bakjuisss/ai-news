@@ -8,8 +8,8 @@ const PANELS = {
   erp: {
     el: document.getElementById("panel-erp"),
     title: "ERP 분석 시스템 · AI Platform",
-    subtitle: "ERP 분석 시스템 · 재무 · 재고 · 매출 AI 분석",
-    footer: "ERP 분석 기능은 준비 중입니다.",
+    subtitle: "ERP 분석 시스템 · 데이터 입력 · 대시보드 · AI 보고서",
+    footer: "ERP 데이터는 브라우저에 저장되며, AI 분석 보고서는 참고용입니다.",
   },
 };
 
