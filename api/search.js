@@ -5,7 +5,7 @@ const {
   callGeminiWithSearch,
   setCorsHeaders,
   handlePreflight,
-} = require("./lib/gemini");
+} = require("../lib/gemini");
 
 function buildSearchPrompt(query, today, fromDate) {
   return `다음 주제에 대한 최신 뉴스를 Google 검색으로 찾아 분석하세요.

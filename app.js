@@ -144,22 +144,44 @@ function renderReport(report) {
 }
 
 async function apiPost(endpoint, body) {
-  const res = await fetch(endpoint, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
+  let res;
+  try {
+    res = await fetch(endpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+  } catch {
+    throw new Error("서버에 연결할 수 없습니다. 네트워크 연결을 확인해 주세요.");
+  }
 
-  const data = await res.json();
+  const rawText = await res.text();
+  let data = null;
+
+  if (rawText) {
+    try {
+      data = JSON.parse(rawText);
+    } catch {
+      const preview = rawText.slice(0, 120).replace(/\s+/g, " ").trim();
+      if (res.status === 504 || /timeout|timed out/i.test(preview)) {
+        throw new Error("요청 시간이 초과되었습니다. AI 검색은 10~30초 걸릴 수 있습니다. 잠시 후 다시 시도해 주세요.");
+      }
+      throw new Error(
+        preview.startsWith("An error")
+          ? "서버 오류가 발생했습니다. Vercel 배포 로그를 확인하거나 잠시 후 다시 시도해 주세요."
+          : `서버 응답 오류: ${preview}`
+      );
+    }
+  }
 
   if (!res.ok) {
-    const err = new Error(data.error || "요청에 실패했습니다.");
-    err.code = data.code;
-    err.retryAfterSeconds = data.retryAfterSeconds;
+    const err = new Error(data?.error || "요청에 실패했습니다.");
+    err.code = data?.code;
+    err.retryAfterSeconds = data?.retryAfterSeconds;
     throw err;
   }
 
-  return data;
+  return data || {};
 }
 
 async function handleSearch(query) {

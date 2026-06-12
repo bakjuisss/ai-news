@@ -3,7 +3,7 @@ const {
   callGeminiWithSearch,
   setCorsHeaders,
   handlePreflight,
-} = require("./lib/gemini");
+} = require("../lib/gemini");
 
 function buildReportPrompt(query, today, fromDate, articles) {
   const articleContext = articles

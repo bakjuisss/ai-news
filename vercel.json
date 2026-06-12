@@ -5,11 +5,9 @@
   "buildCommand": "",
   "outputDirectory": ".",
   "functions": {
-    "api/search.js": {
-      "maxDuration": 30
-    },
-    "api/report.js": {
-      "maxDuration": 30
+    "api/*.js": {
+      "maxDuration": 60,
+      "includeFiles": "lib/**"
     }
   }
 }
