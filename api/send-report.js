@@ -46,8 +46,9 @@ module.exports = async function handler(req, res) {
 
     return res.status(200).json({
       success: true,
-      message: `${trimmedEmail}(으)로 보고서를 전송했습니다. 메일함과 스팸함을 확인해 주세요.`,
+      message: `${trimmedEmail}(으)로 보고서 전송을 요청했습니다. 1~3분 후 받은편지함과 스팸함을 확인해 주세요.`,
       provider: result.provider,
+      detail: result.accepted,
     });
   } catch (err) {
     return res.status(500).json({

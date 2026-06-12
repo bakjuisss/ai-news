@@ -15,6 +15,7 @@ const smtpPasswordInput = document.getElementById("smtp-password-input");
 const emailPreview = document.getElementById("email-preview");
 const emailCheckBtn = document.getElementById("email-check-btn");
 const emailBtn = document.getElementById("email-btn");
+const downloadReportBtn = document.getElementById("download-report-btn");
 const sourcesSection = document.getElementById("sources-section");
 const sourcesList = document.getElementById("sources-list");
 const searchEntryPoint = document.getElementById("search-entry-point");
@@ -51,6 +52,20 @@ function resetEmailForm() {
   emailBtn.classList.add("hidden");
   emailBtn.disabled = true;
   emailCheckBtn.classList.remove("hidden");
+}
+
+function downloadReportFile() {
+  if (!currentReport) return;
+
+  const html = `<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><title>${escapeHtml(currentReport.title)}</title></head><body>${reportContent.innerHTML}</body></html>`;
+  const blob = new Blob([html], { type: "text/html;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `AI뉴스보고서_${currentQuery || "report"}.html`;
+  link.click();
+  URL.revokeObjectURL(url);
+  setStatus("보고서 HTML 파일을 저장했습니다.", "success");
 }
 
 function handleEmailCheck() {
@@ -179,6 +194,7 @@ function renderReport(report) {
   currentReport = report;
   reportSection.classList.remove("hidden");
   emailForm.classList.remove("hidden");
+  downloadReportBtn.classList.remove("hidden");
   resetEmailForm();
   emailInput.value = "";
   smtpPasswordInput.value = "";
@@ -277,6 +293,7 @@ async function handleSearch(query) {
   reportSection.classList.add("hidden");
   reportContent.innerHTML = "";
   emailForm.classList.add("hidden");
+  downloadReportBtn.classList.add("hidden");
   resetEmailForm();
   currentReport = null;
 
@@ -395,6 +412,7 @@ searchForm.addEventListener("submit", (e) => {
 reportBtn.addEventListener("click", handleReport);
 emailCheckBtn.addEventListener("click", handleEmailCheck);
 emailForm.addEventListener("submit", handleSendEmail);
+downloadReportBtn.addEventListener("click", downloadReportFile);
 
 emailInput.addEventListener("input", resetEmailForm);
 smtpPasswordInput.addEventListener("input", () => {

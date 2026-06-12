@@ -417,9 +417,9 @@ body {
 }
 
 .email-check-btn,
-.email-form button[type="submit"] {
+.email-form button[type="submit"],
+.download-report-btn {
   padding: 0.75rem 1.25rem;
-  border: none;
   border-radius: var(--radius);
   font-family: inherit;
   font-size: 0.9rem;
@@ -442,6 +442,7 @@ body {
 .email-form button[type="submit"] {
   background: var(--accent);
   color: #fff;
+  border: none;
 }
 
 .email-form button[type="submit"]:hover:not(:disabled) {
@@ -451,6 +452,23 @@ body {
 .email-form button:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+.download-report-btn {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text);
+}
+
+.download-report-btn:hover:not(:disabled) {
+  background: var(--summary-bg);
+}
+
+.email-form-note {
+  margin: 0.75rem 0 0;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  line-height: 1.5;
 }
 
 .skeleton {
