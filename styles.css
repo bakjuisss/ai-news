@@ -903,6 +903,7 @@ body {
   font-size: 0.875rem;
   font-weight: 600;
   border: 1px solid var(--border);
+  cursor: pointer;
 }
 
 .erp-btn-secondary:hover {
@@ -975,6 +976,16 @@ body {
   display: flex;
   gap: 0.5rem;
   margin-bottom: 0.75rem;
+  position: relative;
+  z-index: 2;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.erp-manual-meta {
+  margin-left: auto;
+  font-size: 0.85rem;
+  color: var(--text-muted);
 }
 
 .erp-table-wrap {

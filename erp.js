@@ -240,6 +240,16 @@ function renderManualTable() {
 function renderManualEditor() {
   renderColumnEditor();
   renderManualTable();
+  const meta = $("erp-manual-meta");
+  if (meta) {
+    meta.textContent = `현재 ${manualHeaders.length}열 · ${manualRows.length}행`;
+  }
+}
+
+function clickTarget(e) {
+  const node = e.target;
+  if (node instanceof Element) return node;
+  return node?.parentElement ?? null;
 }
 
 function addColumn() {
@@ -651,30 +661,11 @@ function downloadReportHtml() {
 }
 
 function handlePanelClick(e) {
-  const target = e.target;
+  const target = clickTarget(e);
+  if (!target) return;
 
-  if (target.closest("#erp-add-column")) {
-    e.preventDefault();
-    addColumn();
-    return;
-  }
-
-  if (target.closest("#erp-add-row")) {
-    e.preventDefault();
-    addRow();
-    return;
-  }
-
-  if (target.closest("#erp-apply-manual")) {
-    e.preventDefault();
-    syncManualFromInputs();
-    const nonEmptyRows = manualRows.filter((row) => row.some((cell) => cell !== ""));
-    if (!nonEmptyRows.length) {
-      setStatus("최소 1행 이상의 데이터를 입력해 주세요.", "error");
-      return;
-    }
-    const name = ($("erp-dataset-name")?.value || "").trim() || "ERP 데이터";
-    applyDataset(name, manualHeaders, nonEmptyRows, "manual");
+  // 정적 버튼은 bindDirectActions에서 처리 (중복 방지)
+  if (target.closest("#erp-add-column, #erp-add-row, #erp-apply-manual, #erp-sample-btn, #erp-export-csv, #erp-generate-report, #erp-download-report")) {
     return;
   }
 
@@ -725,12 +716,6 @@ function handlePanelClick(e) {
     return;
   }
 
-  if (target.closest("#erp-sample-btn")) {
-    e.preventDefault();
-    applyDataset(SAMPLE_DATA.name, SAMPLE_DATA.headers, SAMPLE_DATA.rows, "sample");
-    return;
-  }
-
   if (target.closest("#erp-clear-btn")) {
     e.preventDefault();
     if (!dataset && !manualRows.some((r) => r.some(Boolean))) return;
@@ -752,23 +737,6 @@ function handlePanelClick(e) {
     if (fileNameEl) fileNameEl.textContent = "선택된 파일 없음";
     clearStatus();
     return;
-  }
-
-  if (target.closest("#erp-export-csv")) {
-    e.preventDefault();
-    exportCSV();
-    return;
-  }
-
-  if (target.closest("#erp-generate-report")) {
-    e.preventDefault();
-    generateReport();
-    return;
-  }
-
-  if (target.closest("#erp-download-report")) {
-    e.preventDefault();
-    downloadReportHtml();
   }
 }
 
@@ -807,6 +775,38 @@ function initManualEditor() {
   renderManualEditor();
 }
 
+function bindDirectActions() {
+  const bindings = [
+    ["erp-add-column", addColumn],
+    ["erp-add-row", addRow],
+    ["erp-apply-manual", () => {
+      syncManualFromInputs();
+      const nonEmptyRows = manualRows.filter((row) => row.some((cell) => cell !== ""));
+      if (!nonEmptyRows.length) {
+        setStatus("최소 1행 이상의 데이터를 입력해 주세요.", "error");
+        return;
+      }
+      const name = ($("erp-dataset-name")?.value || "").trim() || "ERP 데이터";
+      applyDataset(name, manualHeaders, nonEmptyRows, "manual");
+    }],
+    ["erp-sample-btn", () => applyDataset(SAMPLE_DATA.name, SAMPLE_DATA.headers, SAMPLE_DATA.rows, "sample")],
+    ["erp-export-csv", exportCSV],
+    ["erp-generate-report", generateReport],
+    ["erp-download-report", downloadReportHtml],
+  ];
+
+  for (const [id, handler] of bindings) {
+    const el = $(id);
+    if (!el || el.dataset.erpBound === "1") continue;
+    el.dataset.erpBound = "1";
+    el.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      handler();
+    });
+  }
+}
+
 function bootErp() {
   erpPanel = $("panel-erp");
   if (!erpPanel) {
@@ -819,6 +819,23 @@ function bootErp() {
     return;
   }
 
+  window.ErpActions = {
+    addColumn,
+    addRow,
+    applyManual: () => {
+      syncManualFromInputs();
+      const nonEmptyRows = manualRows.filter((row) => row.some((cell) => cell !== ""));
+      if (!nonEmptyRows.length) {
+        setStatus("최소 1행 이상의 데이터를 입력해 주세요.", "error");
+        return;
+      }
+      const name = ($("erp-dataset-name")?.value || "").trim() || "ERP 데이터";
+      applyDataset(name, manualHeaders, nonEmptyRows, "manual");
+    },
+    loadSample: () => applyDataset(SAMPLE_DATA.name, SAMPLE_DATA.headers, SAMPLE_DATA.rows, "sample"),
+  };
+
+  bindDirectActions();
   erpPanel.addEventListener("click", handlePanelClick);
   $("erp-file-input")?.addEventListener("change", handleFileChange);
   $("erp-raw-filter")?.addEventListener("input", renderRawData);
