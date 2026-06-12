@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#0a0e1a">
   <meta name="color-scheme" content="dark">
-  <title>AI 뉴스 검색</title>
+  <title>News Report · AI Platform</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -15,102 +15,144 @@
 
     <header class="header">
       <div class="header-inner">
-        <div class="brand">
-          <div class="brand-mark" aria-hidden="true">
-            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M4 6h16v2H4V6zm0 5h10v2H4v-2zm0 5h14v2H4v-2z" fill="currentColor" opacity="0.9"/>
-              <circle cx="19" cy="7" r="2" fill="currentColor"/>
-            </svg>
+        <div class="header-top">
+          <div class="brand">
+            <div class="brand-mark" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M4 6h16v2H4V6zm0 5h10v2H4v-2zm0 5h14v2H4v-2z" fill="currentColor" opacity="0.9"/>
+                <circle cx="19" cy="7" r="2" fill="currentColor"/>
+              </svg>
+            </div>
+            <div>
+              <h1 class="brand-title">AI Platform</h1>
+              <p id="brand-subtitle" class="brand-subtitle">News Report · 뉴스 검색 · 번역 · 종합 보고서</p>
+            </div>
           </div>
-          <div>
-            <h1 class="brand-title">AI 뉴스 검색</h1>
-            <p class="brand-subtitle">최신 뉴스 검색 · 번역 · 핵심 요약 · 종합 보고서</p>
-          </div>
-        </div>
 
-        <form id="search-form" class="search-form" role="search">
-          <label for="search-input" class="visually-hidden">뉴스 검색</label>
-          <input
-            id="search-input"
-            type="search"
-            placeholder="검색어를 입력하세요 (예: AI 반도체 규제)"
-            autocomplete="off"
-            maxlength="200"
-          >
-          <button type="submit" id="search-btn">검색</button>
-        </form>
+          <nav class="main-nav" aria-label="메인 메뉴">
+            <button type="button" class="nav-tab active" data-panel="news">News Report</button>
+            <button type="button" class="nav-tab" data-panel="erp">ERP 분석 시스템</button>
+          </nav>
+        </div>
       </div>
     </header>
 
     <main class="main">
-      <div id="status" class="status" role="status" aria-live="polite"></div>
-
-      <section id="welcome" class="welcome">
-        <h2>어떤 뉴스가 궁금하신가요?</h2>
-        <p>키워드를 입력하면 AI가 최신 뉴스를 찾고, 영문 기사는 한국어로 번역한 뒤 핵심을 1~2줄로 요약해 드립니다.</p>
-        <div class="suggestions">
-          <button type="button" class="suggestion-chip" data-query="AI 반도체 규제">AI 반도체 규제</button>
-          <button type="button" class="suggestion-chip" data-query="한국 경제 전망">한국 경제 전망</button>
-          <button type="button" class="suggestion-chip" data-query="기후 변화 정책">기후 변화 정책</button>
+      <!-- News Report -->
+      <section id="panel-news" class="panel panel-active" aria-label="News Report">
+        <div class="panel-toolbar">
+          <form id="search-form" class="search-form" role="search">
+            <label for="search-input" class="visually-hidden">뉴스 검색</label>
+            <input
+              id="search-input"
+              type="search"
+              placeholder="검색어를 입력하세요 (예: AI 반도체 규제)"
+              autocomplete="off"
+              maxlength="200"
+            >
+            <button type="submit" id="search-btn">검색</button>
+          </form>
         </div>
-      </section>
 
-      <section id="results-section" class="results-section hidden">
-        <div class="results-header">
-          <h2 id="results-title">검색 결과</h2>
-          <button type="button" id="report-btn" class="report-btn">종합 보고서 생성</button>
-        </div>
-        <div id="articles" class="articles"></div>
-      </section>
+        <div id="news-status" class="status" role="status" aria-live="polite"></div>
 
-      <section id="report-section" class="report-section hidden">
-        <div id="report-content" class="report-content"></div>
-        <form id="email-form" class="email-form hidden">
-          <p class="email-form-desc">받을 이메일과 해당 메일의 앱 비밀번호를 입력하세요. 입력한 주소로만 전송됩니다.</p>
-
-          <label for="email-input">받을 이메일</label>
-          <input
-            id="email-input"
-            type="email"
-            placeholder="example@naver.com"
-            autocomplete="email"
-            maxlength="254"
-            required
-          >
-
-          <label for="smtp-password-input">메일 앱 비밀번호</label>
-          <input
-            id="smtp-password-input"
-            type="password"
-            placeholder="네이버/Outlook/Gmail 앱 비밀번호"
-            autocomplete="off"
-            maxlength="128"
-            required
-          >
-
-          <p id="email-preview" class="email-preview hidden"></p>
-
-          <div class="email-form-actions">
-            <button type="button" id="email-check-btn" class="email-check-btn">주소 확인</button>
-            <button type="submit" id="email-btn" class="hidden" disabled>전송하기</button>
-            <button type="button" id="download-report-btn" class="download-report-btn hidden">보고서 파일 저장</button>
+        <section id="welcome" class="welcome">
+          <h2>어떤 뉴스가 궁금하신가요?</h2>
+          <p>키워드를 입력하면 AI가 최신 뉴스를 찾고, 영문 기사는 한국어로 번역한 뒤 핵심을 1~2줄로 요약해 드립니다.</p>
+          <div class="suggestions">
+            <button type="button" class="suggestion-chip" data-query="AI 반도체 규제">AI 반도체 규제</button>
+            <button type="button" class="suggestion-chip" data-query="한국 경제 전망">한국 경제 전망</button>
+            <button type="button" class="suggestion-chip" data-query="기후 변화 정책">기후 변화 정책</button>
           </div>
-          <p class="email-form-note">네이버 메일이 안 오면 스팸함을 확인하거나, '보고서 파일 저장'을 이용해 주세요.</p>
-        </form>
+        </section>
+
+        <section id="results-section" class="results-section hidden">
+          <div class="results-header">
+            <h2 id="results-title">검색 결과</h2>
+            <button type="button" id="report-btn" class="report-btn">종합 보고서 생성</button>
+          </div>
+          <div id="articles" class="articles"></div>
+        </section>
+
+        <section id="report-section" class="report-section hidden">
+          <div id="report-content" class="report-content"></div>
+          <form id="email-form" class="email-form hidden">
+            <p class="email-form-desc">받을 이메일과 해당 메일의 앱 비밀번호를 입력하세요. 입력한 주소로만 전송됩니다.</p>
+
+            <label for="email-input">받을 이메일</label>
+            <input id="email-input" type="email" placeholder="example@naver.com" autocomplete="email" maxlength="254" required>
+
+            <label for="smtp-password-input">메일 앱 비밀번호</label>
+            <input id="smtp-password-input" type="password" placeholder="네이버/Outlook/Gmail 앱 비밀번호" autocomplete="off" maxlength="128" required>
+
+            <p id="email-preview" class="email-preview hidden"></p>
+
+            <div class="email-form-actions">
+              <button type="button" id="email-check-btn" class="email-check-btn">주소 확인</button>
+              <button type="submit" id="email-btn" class="hidden" disabled>전송하기</button>
+              <button type="button" id="download-report-btn" class="download-report-btn hidden">보고서 파일 저장</button>
+            </div>
+            <p class="email-form-note">네이버 메일이 안 오면 스팸함을 확인하거나, '보고서 파일 저장'을 이용해 주세요.</p>
+          </form>
+        </section>
+
+        <aside id="sources-section" class="sources-section hidden">
+          <h3>참고 출처</h3>
+          <ul id="sources-list" class="sources-list"></ul>
+          <div id="search-entry-point" class="search-entry-point"></div>
+        </aside>
       </section>
 
-      <aside id="sources-section" class="sources-section hidden">
-        <h3>참고 출처</h3>
-        <ul id="sources-list" class="sources-list"></ul>
-        <div id="search-entry-point" class="search-entry-point"></div>
-      </aside>
+      <!-- ERP 분석 시스템 -->
+      <section id="panel-erp" class="panel hidden" aria-label="ERP 분석 시스템">
+        <div id="erp-status" class="status" role="status" aria-live="polite"></div>
+
+        <section class="erp-hero">
+          <h2>ERP 분석 시스템</h2>
+          <p>ERP 데이터를 AI로 분석하고, 경영 인사이트와 보고서를 생성합니다. (준비 중)</p>
+        </section>
+
+        <div class="erp-grid">
+          <article class="erp-card">
+            <span class="erp-card-icon" aria-hidden="true">📊</span>
+            <h3>재무 분석</h3>
+            <p>매출·비용·손익 데이터를 분석하고 핵심 지표를 요약합니다.</p>
+            <span class="erp-badge">준비 중</span>
+          </article>
+          <article class="erp-card">
+            <span class="erp-card-icon" aria-hidden="true">📦</span>
+            <h3>재고 · 물류</h3>
+            <p>재고 회전율, 입출고 추이, 부족/과잉 재고를 분석합니다.</p>
+            <span class="erp-badge">준비 중</span>
+          </article>
+          <article class="erp-card">
+            <span class="erp-card-icon" aria-hidden="true">📈</span>
+            <h3>매출 트렌드</h3>
+            <p>기간별 매출 변화와 채널·제품별 성과를 비교합니다.</p>
+            <span class="erp-badge">준비 중</span>
+          </article>
+          <article class="erp-card">
+            <span class="erp-card-icon" aria-hidden="true">🤖</span>
+            <h3>AI 경영 보고서</h3>
+            <p>ERP 데이터 기반 종합 경영 보고서를 자동 생성합니다.</p>
+            <span class="erp-badge">준비 중</span>
+          </article>
+        </div>
+
+        <section class="erp-coming">
+          <h3>곧 제공 예정</h3>
+          <p>ERP 연동 및 AI 분석 기능은 순차적으로 오픈됩니다. News Report 메뉴는 지금 바로 이용할 수 있습니다.</p>
+        </section>
+      </section>
     </main>
 
     <footer class="footer">
-      <p>AI가 생성한 요약 및 보고서는 참고용이며, 원문 기사를 반드시 확인하세요.</p>
+      <p id="footer-text">AI가 생성한 요약 및 보고서는 참고용이며, 원문 기사를 반드시 확인하세요.</p>
     </footer>
   </div>
 
   <script src="app.js"></script>
+  <script src="news.js"></script>
+  <script src="erp.js"></script>
 </body>
 </html>
