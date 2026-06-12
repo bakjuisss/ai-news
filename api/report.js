@@ -7,10 +7,11 @@ const {
 
 function buildReportPrompt(query, today, fromDate, articles) {
   const articleContext = articles
-    .map(
-      (a, i) =>
-        `${i + 1}. [${a.source}] ${a.title}\n   URL: ${a.url}\n   요약: ${a.summary}`
-    )
+    .map((a, i) => {
+      const original = a.originalTitle ? `\n   원문 제목: ${a.originalTitle}` : "";
+      const lang = a.language && a.language !== "ko" ? `\n   원문 언어: ${a.language}` : "";
+      return `${i + 1}. [${a.source}] ${a.title}${original}${lang}\n   URL: ${a.url}\n   요약: ${a.summary}`;
+    })
     .join("\n\n");
 
   return `다음 주제에 대한 종합 뉴스 분석 보고서를 작성하세요.
@@ -28,7 +29,8 @@ ${articleContext || "(기사 없음 — Google 검색으로 추가 정보를 수
 3. sections에는 "현황", "핵심 쟁점", "향후 전망" 섹션을 포함하세요.
 4. executiveSummary는 전체를 2~3문장으로 요약하세요.
 5. keyTakeaways는 핵심 포인트 3~5개를 나열하세요.
-6. 사실과 추론을 구분하고, 한국어로 작성하세요.
+6. 사실과 추론을 구분하고, 보고서 전체를 한국어로 작성하세요.
+7. 영문 출처를 참고한 경우에도 한국어로 설명하고, 필요 시 괄호 안에 원문 핵심 용어를 병기하세요.
 
 반드시 아래 JSON 형식만 출력하세요. 다른 텍스트는 포함하지 마세요.
 {

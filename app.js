@@ -150,6 +150,11 @@ function renderArticleSkeletons(count = 3) {
   `).join("");
 }
 
+function getLanguageLabel(code) {
+  const labels = { en: "영문", ja: "일문", zh: "중문", ko: "국문" };
+  return labels[code] || code.toUpperCase();
+}
+
 function renderArticles(articles) {
   if (!articles.length) {
     articlesEl.innerHTML = `<p class="article-meta">관련 뉴스를 찾지 못했습니다. 다른 검색어를 시도해 보세요.</p>`;
@@ -157,24 +162,36 @@ function renderArticles(articles) {
   }
 
   articlesEl.innerHTML = articles
-    .map(
-      (article) => `
+    .map((article) => {
+      const showTranslation = article.translated && article.originalTitle;
+      const langBadge =
+        article.language && article.language !== "ko"
+          ? `<span class="lang-badge">${escapeHtml(getLanguageLabel(article.language))} → KO</span>`
+          : "";
+
+      return `
     <article class="article-card">
       <div class="article-card-header">
         <h3 class="article-title">
           <a href="${escapeHtml(article.url)}" target="_blank" rel="noopener noreferrer">
             ${escapeHtml(article.title)}
           </a>
+          ${langBadge}
         </h3>
         <a class="external-link" href="${escapeHtml(article.url)}" target="_blank" rel="noopener noreferrer" aria-label="원문 보기">↗</a>
       </div>
+      ${
+        showTranslation
+          ? `<p class="article-original">원문: ${escapeHtml(article.originalTitle)}</p>`
+          : ""
+      }
       <p class="article-meta">
         ${escapeHtml(article.source)}${article.publishedAt ? ` · ${escapeHtml(article.publishedAt)}` : ""}
       </p>
       <p class="article-summary">${escapeHtml(article.summary)}</p>
     </article>
-  `
-    )
+  `;
+    })
     .join("");
 }
 
