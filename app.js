@@ -337,8 +337,8 @@ async function handleSearch(query) {
     if (!currentArticles.length) {
       const hint =
         data.totalFound > 0
-          ? "최근 2주 이내 기사만 표시합니다. 해당 기간에 맞는 결과가 없습니다."
-          : "검색 결과가 없습니다.";
+          ? "기사는 찾았지만 표시 조건(최근 2주)에 맞는 결과가 없습니다."
+          : "검색 결과가 없습니다. 다른 검색어를 시도해 보세요.";
       setStatus(hint, "error");
     }
   } catch (err) {

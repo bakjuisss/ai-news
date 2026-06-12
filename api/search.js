@@ -16,26 +16,24 @@ function buildSearchPrompt(query, today, fromDate) {
 
 요구사항:
 1. 해당 주제와 관련된 최신 뉴스 기사 5~8건을 찾으세요.
-2. 반드시 발행일(publishedAt)이 ${fromDate} 이후이고 ${today} 이전인 기사만 포함하세요. 2주보다 오래된 기사는 제외하세요.
-3. 한국어 뉴스를 우선하되, 주제에 따라 해외(영문) 뉴스도 포함할 수 있습니다.
-4. 영문 등 외국어 기사는 title·summary를 반드시 자연스러운 한국어로 번역하세요.
-5. 한국어 원문 기사는 번역 없이 그대로 사용하고, language는 "ko"로 표기하세요.
-6. 번역한 기사는 language를 "en" 등 원문 언어 코드로 표기하고, originalTitle에 원문 제목을 넣으세요.
-7. url은 실제 기사 URL을 사용하세요. grounding 검색 결과의 출처 URL을 활용하세요.
-8. source는 언론사명, publishedAt은 YYYY-MM-DD 형식(반드시 기재, 알 수 없으면 해당 기사는 제외).
+2. 가능하면 발행일(publishedAt)이 ${fromDate}~${today} 사이인 최신 기사를 우선하세요.
+3. 한국어·영문 뉴스 모두 포함할 수 있습니다.
+4. title과 summary는 항상 한국어로 작성하세요. 영문 기사는 번역하고 originalTitle에 원문 제목, language에 "en"을 넣으세요.
+5. 한국어 기사는 language를 "ko", originalTitle은 빈 문자열로 하세요.
+6. url은 실제 기사 URL, source는 언론사명, publishedAt은 YYYY-MM-DD(모르면 빈 문자열).
 
-반드시 아래 JSON 형식만 출력하세요. 다른 텍스트는 포함하지 마세요.
+반드시 아래 JSON 형식만 출력하세요. articles 배열에 최소 3건 이상 넣으세요.
 {
   "query": "검색 주제",
   "articles": [
     {
-      "title": "한국어 제목 (번역 포함)",
-      "originalTitle": "원문 제목 (번역한 경우만, 한국어면 빈 문자열)",
-      "language": "ko 또는 en 등 원문 언어 코드",
+      "title": "한국어 제목",
+      "originalTitle": "",
+      "language": "ko",
       "url": "https://...",
       "source": "언론사명",
       "publishedAt": "YYYY-MM-DD",
-      "summary": "한국어 핵심 1~2문장 요약"
+      "summary": "한국어 1~2문장 요약"
     }
   ]
 }`;
@@ -51,7 +49,7 @@ function enrichArticlesWithSources(articles, groundingSources) {
       title: article.title || fallback?.title || "제목 없음",
       originalTitle: language !== "ko" && originalTitle ? originalTitle : "",
       language,
-      translated: language !== "ko" || Boolean(originalTitle),
+      translated: language !== "ko" && Boolean(originalTitle),
       url: article.url || fallback?.uri || "#",
       source: article.source || "출처 미상",
       publishedAt: normalizePublishedDate(article.publishedAt) || "",
@@ -60,10 +58,46 @@ function enrichArticlesWithSources(articles, groundingSources) {
   });
 }
 
-function filterRecentArticles(articles, fromDate, toDate) {
-  return articles.filter((article) =>
+function applyRecentFilter(articles, fromDate, toDate) {
+  const inRange = articles.filter((article) =>
     isWithinRecentNewsRange(article.publishedAt, fromDate, toDate)
   );
+
+  if (inRange.length > 0) {
+    return inRange;
+  }
+
+  const withoutDate = articles.filter(
+    (article) => !normalizePublishedDate(article.publishedAt) && article.title
+  );
+
+  if (withoutDate.length > 0) {
+    return withoutDate;
+  }
+
+  return articles;
+}
+
+function buildArticlesFromGrounding(groundingSources) {
+  return groundingSources.slice(0, 8).map((source) => {
+    let hostname = "출처 미상";
+    try {
+      hostname = new URL(source.uri).hostname.replace(/^www\./, "");
+    } catch {
+      /* ignore */
+    }
+
+    return {
+      title: source.title || "제목 없음",
+      originalTitle: "",
+      language: "ko",
+      translated: false,
+      url: source.uri || "#",
+      source: hostname,
+      publishedAt: "",
+      summary: "AI 요약을 생성하지 못했습니다. 원문 링크에서 기사를 확인해 주세요.",
+    };
+  });
 }
 
 module.exports = async function handler(req, res) {
@@ -105,17 +139,23 @@ module.exports = async function handler(req, res) {
       return res.status(result.error.status).json(result.error.body);
     }
 
-    const enriched = enrichArticlesWithSources(
+    let enriched = enrichArticlesWithSources(
       result.parsed.articles || [],
       result.grounding.sources
     );
-    const articles = filterRecentArticles(enriched, fromDate, today);
+
+    if (!enriched.length && result.grounding.sources?.length) {
+      enriched = buildArticlesFromGrounding(result.grounding.sources);
+    }
+
+    const articles = applyRecentFilter(enriched, fromDate, today);
 
     return res.status(200).json({
       query: trimmedQuery,
       dateRange: { from: fromDate, to: today },
       articles,
       totalFound: enriched.length,
+      filteredCount: enriched.length - articles.length,
       sources: result.grounding.sources,
       searchEntryPoint: result.grounding.searchEntryPoint,
     });
