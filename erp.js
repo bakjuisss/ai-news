@@ -5,6 +5,7 @@ let validation = null;
 let analytics = null;
 let currentReport = null;
 let activeRawTab = "products";
+let pendingAssignments = [];
 
 function $(id) {
   return document.getElementById(id);
@@ -69,7 +70,8 @@ function renderTableCards() {
     .map((def) => {
       const s = summary[def.key];
       const statusClass = s.loaded ? "loaded" : "pending";
-      const statusText = s.loaded ? `${formatNum(s.rowCount)}행` : "미업로드";
+      const statusText = s.loaded ? `${formatNum(s.rowCount)}행` : "미등록";
+      const fileHint = s.loaded && s.sourceFile ? escapeHtml(s.sourceFile) : "";
       return `
         <div class="erp-file-card ${statusClass}">
           <div class="erp-file-card-head">
@@ -77,6 +79,7 @@ function renderTableCards() {
             <span>${escapeHtml(def.label)}</span>
           </div>
           <div class="erp-file-card-meta">${escapeHtml(statusText)}</div>
+          ${fileHint ? `<div class="erp-file-card-name" title="${fileHint}">${fileHint}</div>` : ""}
         </div>
       `;
     })
@@ -100,7 +103,7 @@ function renderValidation() {
     box.innerHTML = `
       <div class="erp-validation-pending">
         <strong>데이터 대기 중</strong>
-        <p>4개 CSV 중 ${loadedCount}개 업로드됨. products · customers · sales_orders · sales_order_items 를 모두 등록해 주세요.</p>
+        <p>4개 테이블 중 ${loadedCount}개 등록됨. 상품 · 고객 · 주문 · 주문상세 데이터를 모두 올려 주세요.</p>
       </div>
     `;
     return;
@@ -333,6 +336,100 @@ function switchErpTab(tabName) {
   if (tabName === "report") renderReportPanel();
 }
 
+function renderAssignPanel() {
+  const panel = $("erp-assign-panel");
+  const rowsEl = $("erp-assign-rows");
+  if (!panel || !rowsEl) return;
+
+  if (!pendingAssignments.length) {
+    panel.classList.add("hidden");
+    rowsEl.innerHTML = "";
+    return;
+  }
+
+  panel.classList.remove("hidden");
+  const tableOptions = Object.values(ErpData.ERP_TABLES)
+    .map((def) => `<option value="${def.key}">${escapeHtml(def.label)}</option>`)
+    .join("");
+
+  rowsEl.innerHTML = pendingAssignments
+    .map((item, idx) => {
+      const hint =
+        item.confidence >= 0.7
+          ? "열 이름 자동 인식"
+          : item.confidence > 0
+            ? "추천 (확인 필요)"
+            : "직접 선택 필요";
+      return `
+    <div class="erp-assign-row">
+      <div class="erp-assign-file">
+        <strong>${escapeHtml(item.fileName)}</strong>
+        <span>${formatNum(item.table.objects.length)}행 · ${item.table.headers.length}열 · ${escapeHtml(hint)}</span>
+      </div>
+      <select class="erp-assign-select" data-idx="${idx}" aria-label="테이블 선택">
+        <option value="">테이블 선택...</option>
+        ${tableOptions}
+      </select>
+      <button type="button" class="erp-assign-remove erp-btn-secondary" data-idx="${idx}">제거</button>
+    </div>
+  `;
+    })
+    .join("");
+
+  rowsEl.querySelectorAll(".erp-assign-select").forEach((select) => {
+    const idx = Number(select.dataset.idx);
+    select.value = pendingAssignments[idx]?.selectedKey || "";
+    select.addEventListener("change", () => {
+      pendingAssignments[idx].selectedKey = select.value;
+    });
+  });
+}
+
+function applyAssignments() {
+  if (!pendingAssignments.length) return;
+  if (!dataset) dataset = ErpData.getEmptyDataset();
+
+  const errors = [];
+  const used = new Map();
+
+  for (const item of pendingAssignments) {
+    if (!item.selectedKey) {
+      errors.push(`${item.fileName}: 테이블을 선택해 주세요.`);
+      continue;
+    }
+    if (used.has(item.selectedKey)) {
+      const label = ErpData.ERP_TABLES[item.selectedKey].label;
+      errors.push(`${label} 테이블에 파일이 중복 할당되었습니다.`);
+      continue;
+    }
+    used.set(item.selectedKey, item.fileName);
+    dataset[item.selectedKey] = {
+      ...item.table,
+      sourceFile: item.fileName,
+    };
+  }
+
+  if (errors.length) {
+    setStatus(errors[0], "error");
+    return;
+  }
+
+  pendingAssignments = [];
+  dataset.source = "upload";
+  dataset.loadedAt = new Date().toISOString();
+  renderAssignPanel();
+  refreshState();
+
+  if (isReady()) {
+    setStatus("4개 ERP 데이터 검증 완료. 대시보드를 확인하세요.", "success");
+    setTimeout(clearStatus, 3000);
+  } else {
+    const count = Object.values(ErpData.getTableSummary(dataset)).filter((s) => s.loaded).length;
+    setStatus(`${count}/4 테이블 등록됨. 나머지 파일도 업로드해 주세요.`, "success");
+    setTimeout(clearStatus, 2500);
+  }
+}
+
 async function ingestFiles(fileList) {
   const files = Array.from(fileList || []);
   if (!files.length) return;
@@ -344,47 +441,37 @@ async function ingestFiles(fileList) {
 
   if (!dataset) dataset = ErpData.getEmptyDataset();
 
-  setStatus(`${files.length}개 파일을 처리하는 중...`, "loading");
-  let loaded = 0;
+  setStatus(`${files.length}개 파일을 읽는 중...`, "loading");
   const errors = [];
 
   for (const file of files) {
-    const tableKey = ErpData.detectFileTable(file.name);
-    if (!tableKey) {
-      errors.push(`${file.name}: 파일명을 인식하지 못했습니다.`);
-      continue;
-    }
-
     try {
-      dataset[tableKey] = await ErpData.parseTableFromFile(file);
-      loaded++;
+      const table = await ErpData.parseTableFromFile(file);
+      const detection = ErpData.detectTableForFile(file.name, table.headers);
+      pendingAssignments.push({
+        fileName: file.name,
+        table,
+        selectedKey: detection.key || "",
+        confidence: detection.confidence || 0,
+      });
     } catch (err) {
       errors.push(err.message || `${file.name}: 처리 실패`);
     }
   }
 
-  if (!loaded && errors.length) {
-    setStatus(errors[0], "error");
+  renderAssignPanel();
+  clearStatus();
+
+  if (!pendingAssignments.length) {
+    setStatus(errors[0] || "업로드할 수 있는 파일이 없습니다.", "error");
     return;
   }
-
-  dataset.source = "upload";
-  dataset.loadedAt = new Date().toISOString();
-  refreshState();
 
   if (errors.length) {
-    setStatus(`${loaded}개 적용, 오류 ${errors.length}건: ${errors[0]}`, "error");
-    return;
-  }
-
-  if (isReady()) {
-    setStatus("4개 ERP 데이터 검증 완료. 대시보드를 확인하세요.", "success");
-    setTimeout(clearStatus, 3000);
+    setStatus(`${pendingAssignments.length}개 파일 대기, 오류 ${errors.length}건: ${errors[0]}`, "error");
   } else {
-    const summary = ErpData.getTableSummary(dataset);
-    const count = Object.values(summary).filter((s) => s.loaded).length;
-    setStatus(`${count}/4 테이블 등록됨. 나머지 파일도 업로드해 주세요.`, "success");
-    setTimeout(clearStatus, 2500);
+    setStatus("파일을 확인한 뒤 테이블을 선택하고 '선택 내용 적용'을 누르세요.", "success");
+    setTimeout(clearStatus, 3500);
   }
 }
 
@@ -408,6 +495,8 @@ function clearAll() {
   validation = null;
   analytics = null;
   currentReport = null;
+  pendingAssignments = [];
+  renderAssignPanel();
   refreshState();
   clearStatus();
 }
@@ -544,6 +633,20 @@ function bindEvents() {
     if (target.closest("#erp-export-csv")) {
       e.preventDefault();
       exportRawCsv();
+      return;
+    }
+    if (target.closest("#erp-apply-assignments")) {
+      e.preventDefault();
+      applyAssignments();
+      return;
+    }
+    const removeBtn = target.closest(".erp-assign-remove");
+    if (removeBtn) {
+      e.preventDefault();
+      const idx = Number(removeBtn.dataset.idx);
+      pendingAssignments.splice(idx, 1);
+      renderAssignPanel();
+      if (!pendingAssignments.length) clearStatus();
       return;
     }
     if (target.closest("[data-goto-tab]")) {

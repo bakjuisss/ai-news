@@ -359,7 +359,7 @@ async function loadSampleTables() {
     const res = await fetch(`${SAMPLE_BASE}${def.file}`);
     if (!res.ok) throw new Error(`샘플 파일을 불러오지 못했습니다: ${def.file}`);
     const text = await res.text();
-    dataset[def.key] = parseTableFromCSV(text);
+    dataset[def.key] = { ...parseTableFromCSV(text), sourceFile: def.file };
   }
 
   return dataset;
@@ -444,25 +444,85 @@ async function parseTableFromFile(file) {
   throw new Error(`${name}: CSV 또는 Excel(.xlsx, .xls) 파일만 지원합니다.`);
 }
 
-function detectFileTable(fileName) {
+const SIGNATURE_COLS = {
+  sales_order_items: ["order_item_id", "amount_krw", "discount_pct"],
+  sales_orders: ["order_date", "channel", "payment_method", "total_amount_krw"],
+  products: ["product_name", "unit_cost_krw", "stock_qty", "brand"],
+  customers: ["customer_name", "join_date", "tier", "email"],
+};
+
+function normalizeHeader(header) {
+  return String(header || "")
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, "_");
+}
+
+function detectTableFromHeaders(headers) {
+  const headerSet = new Set((headers || []).map(normalizeHeader));
+  const results = [];
+
+  for (const [key, def] of Object.entries(ERP_TABLES)) {
+    const required = def.required.map(normalizeHeader);
+    const matched = required.filter((col) => headerSet.has(col)).length;
+    const baseScore = required.length ? matched / required.length : 0;
+
+    const signatures = (SIGNATURE_COLS[key] || []).map(normalizeHeader);
+    const sigMatched = signatures.filter((col) => headerSet.has(col)).length;
+    const sigBonus = signatures.length ? (sigMatched / signatures.length) * 0.25 : 0;
+
+    results.push({
+      key,
+      score: Math.min(1, baseScore + sigBonus),
+      matched,
+      total: required.length,
+    });
+  }
+
+  results.sort((a, b) => b.score - a.score);
+  const best = results[0];
+  const second = results[1];
+
+  if (!best || best.score < 0.45) {
+    return { key: null, confidence: best?.score || 0, scores: results };
+  }
+
+  const ambiguous = second && best.score - second.score < 0.12 && best.score < 0.9;
+  if (ambiguous) {
+    return { key: null, confidence: best.score, scores: results, ambiguous: true };
+  }
+
+  return { key: best.key, confidence: best.score, scores: results };
+}
+
+function detectFileTableHint(fileName) {
   const base = String(fileName || "")
     .toLowerCase()
     .replace(/\.(csv|xlsx|xls)$/i, "");
 
-  if (base === "products" || base === "product" || base.includes("product")) return "products";
-  if (base === "customers" || base === "customer" || base.includes("customer")) return "customers";
-  if (
-    base === "sales_order_items" ||
-    base.includes("order_item") ||
-    base.includes("order-item") ||
-    base.includes("orderitems")
-  ) {
+  if (base.includes("order_item") || base.includes("order-item") || base.includes("orderitems")) {
     return "sales_order_items";
   }
-  if (base === "sales_orders" || base.includes("sales_order") || base.includes("order")) {
+  if (base.includes("sales_order") || (base.includes("order") && !base.includes("item"))) {
     return "sales_orders";
   }
+  if (base.includes("product")) return "products";
+  if (base.includes("customer")) return "customers";
   return null;
+}
+
+function detectTableForFile(fileName, headers) {
+  const fromHeaders = detectTableFromHeaders(headers);
+  if (fromHeaders.key) {
+    return { ...fromHeaders, source: "headers" };
+  }
+
+  const hint = detectFileTableHint(fileName);
+  if (hint) {
+    return { key: hint, confidence: 0.35, source: "filename_hint", scores: fromHeaders.scores };
+  }
+
+  return { key: null, confidence: fromHeaders.confidence, scores: fromHeaders.scores };
 }
 
 function getEmptyDataset() {
@@ -476,12 +536,13 @@ function getEmptyDataset() {
 function getTableSummary(dataset) {
   const summary = {};
   for (const def of Object.values(ERP_TABLES)) {
-    const count = dataset[def.key]?.objects?.length || 0;
+    const table = dataset[def.key];
+    const count = table?.objects?.length || 0;
     summary[def.key] = {
       label: def.label,
-      file: def.file,
       loaded: count > 0,
       rowCount: count,
+      sourceFile: table?.sourceFile || "",
     };
   }
   return summary;
@@ -499,7 +560,8 @@ window.ErpData = {
   validateDataset,
   buildAnalytics,
   loadSampleTables,
-  detectFileTable,
+  detectTableFromHeaders,
+  detectTableForFile,
   getEmptyDataset,
   getTableSummary,
   parseNumber,

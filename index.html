@@ -133,8 +133,15 @@
                 <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5"/>
               </svg>
               <p class="erp-dropzone-title">4개 ERP 파일을 끌어다 놓거나 클릭하여 업로드</p>
-              <p class="erp-dropzone-sub">CSV · Excel(.xlsx) — products, customers, sales_orders, sales_order_items</p>
+              <p class="erp-dropzone-sub">CSV · Excel(.xlsx) — 파일명 자유, 열 이름으로 테이블 자동 인식</p>
             </label>
+
+            <div id="erp-assign-panel" class="erp-assign-panel hidden">
+              <h4 class="erp-assign-title">업로드 파일 매핑</h4>
+              <p class="erp-hint">열 이름으로 테이블을 추천합니다. 틀리면 직접 선택한 뒤 <strong>선택 내용 적용</strong>을 누르세요.</p>
+              <div id="erp-assign-rows" class="erp-assign-rows"></div>
+              <button type="button" id="erp-apply-assignments" class="erp-btn-primary">선택 내용 적용</button>
+            </div>
 
             <div id="erp-file-grid" class="erp-file-grid"></div>
             <div id="erp-validation" class="erp-validation hidden"></div>
@@ -232,7 +239,7 @@
 
   <script src="app.js"></script>
   <script src="news.js"></script>
-  <script src="erp-data.js?v=5"></script>
-  <script src="erp.js?v=5"></script>
+  <script src="erp-data.js?v=7"></script>
+  <script src="erp.js?v=7"></script>
 </body>
 </html>
